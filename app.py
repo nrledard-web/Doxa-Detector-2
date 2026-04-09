@@ -6,6 +6,52 @@ from typing import List, Dict
 import pandas as pd
 import streamlit as st
 from streamlit_mic_recorder import speech_to_text
+from openai import OpenAI
+client = OpenAI()
+
+def explain_classification(sentence, classification, scores):
+
+    prompt = f"""
+You are an epistemic analysis assistant.
+
+Sentence:
+{sentence}
+
+Classification:
+{classification}
+
+Signals:
+Verifiability score: {scores['verifiability']}/20
+Source strength score: {scores['source']}/20
+Rhetorical intensity: {scores['rhetoric']}/20
+Normative language detected: {scores['normative']}
+Absolutist language detected: {scores['absolutist']}
+External corroboration found: {scores['corroboration']}
+Conceptual density: {scores['conceptual_density']}
+
+Explain why the sentence received this classification.
+Then propose a stronger formulation.
+
+Format:
+
+Explanation:
+...
+
+Main weaknesses detected:
+- ...
+- ...
+
+Suggested stronger formulation:
+...
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content
 st.set_page_config(
     page_title="Mécroyance Lab — Fact-checking",
     page_icon="🧠",
