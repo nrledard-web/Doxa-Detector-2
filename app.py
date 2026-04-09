@@ -1238,3 +1238,4 @@ if show_method:
         f"- **{translations[lang]['cognitive_closure']}** : `(D * S) / (G + N)`\n\n"
         f"{translations[lang]['disclaimer']}"
     )
+ 
