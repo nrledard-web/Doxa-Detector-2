@@ -1274,7 +1274,7 @@ if analyze_submitted:
 
     st.markdown(f"**{translations[lang]['interpretation']} :** {cog.interpret()}")
 
-        st.subheader(translations[lang]["hard_fact_checking_by_claim"])
+    st.subheader(translations[lang]["hard_fact_checking_by_claim"])
     claims_df = pd.DataFrame([
         {
             translations[lang]["claim"]: c.text,
@@ -1321,6 +1321,49 @@ if analyze_submitted:
                 st.write(explication)
     else:
         st.info(translations[lang]["paste_longer_text"])
+
+    if st.session_state.get("article_source") == "paste":
+        st.divider()
+        st.subheader(translations[lang]["external_corroboration_module"])
+        st.caption(translations[lang]["external_corroboration_caption"])
+
+        with st.spinner(translations[lang]["corroboration_in_progress"]):
+            corroboration = corroborate_claims(article, max_claims=5, max_results_per_claim=3)
+
+        if corroboration:
+            for i, item in enumerate(corroboration, start=1):
+                title_preview = item["claim"][:140] + ("..." if len(item["claim"]) > 140 else "")
+                verdict = item["verdict"]
+
+                if verdict == "Corroborée":
+                    verdict_display = f"🟢 {translations[lang]['corroborated']}"
+                elif verdict == "Mitigée":
+                    verdict_display = f"🟠 {translations[lang]['mixed']}"
+                elif verdict == "Non corroborée":
+                    verdict_display = f"🔴 {translations[lang]['not_corroborated']}"
+                else:
+                    verdict_display = f"⚪ {translations[lang]['insufficiently_documented']}"
+
+                with st.expander(f"Affirmation {i} : {title_preview}", expanded=(i == 1)):
+                    st.markdown(f"**{translations[lang]['corroboration_verdict']} :** {verdict_display}")
+                    st.markdown(f"**{translations[lang]['generated_query']} :** `{item['query']}`")
+
+                    if item["matches"]:
+                        for match in item["matches"]:
+                            st.markdown(f"**[{match['title']}]({match['url']})**")
+                            st.markdown(
+                                f"- **{translations[lang]['match_score']}** : {match['match_score']['score']}\n"
+                                f"- **{translations[lang]['contradiction_signal']}** : "
+                                f"{translations[lang]['detected'] if match['match_score']['contradiction_signal'] else translations[lang]['not_detected']}"
+                            )
+                            if match["snippet"]:
+                                st.caption(match["snippet"])
+                    else:
+                        st.warning(translations[lang]["no_strong_sources_found"])
+        else:
+            st.info(translations[lang]["no_corroboration_found"])
+else:
+    st.info(translations[lang]["paste_text_or_load_url"])
 
     # -----------------------------
     # Corroboration externe seulement pour texte collé
