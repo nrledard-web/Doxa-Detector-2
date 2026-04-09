@@ -1324,7 +1324,6 @@ if analyze_submitted:
                     classification=classification,
                     scores=scores
                 )
-
                            st.write("### Pourquoi ce score")
                 st.write(explication)
 
