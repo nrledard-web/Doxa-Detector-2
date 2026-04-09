@@ -1290,14 +1290,15 @@ if analyze_submitted:
     ])
 
     if not claims_df.empty:
-        st.dataframe(claims_df, use_container_width=True, hide_index=True)
+    st.dataframe(claims_df, use_container_width=True, hide_index=True)
 
-        st.markdown("## Explication IA des affirmations")
+    st.markdown("## Explication IA des affirmations")
 
-        for i, c in enumerate(result["claims"], start=1):
-            classification = c.status
+    for i, c in enumerate(result["claims"], start=1):
 
-            scores = {
+        classification = c.status
+
+        scores = {
             "verifiability": c.verifiability,
             "source": 20 if c.has_source_cue else 5,
             "rhetoric": c.risk,
@@ -1308,6 +1309,7 @@ if analyze_submitted:
         }
 
         with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
+
             st.write("### Score")
             st.write(classification)
 
@@ -1319,6 +1321,7 @@ if analyze_submitted:
 
             st.write("### Pourquoi ce score")
             st.write(explication)
+
 else:
     st.info(translations[lang]["paste_longer_text"])
     st.markdown("## Explication IA des affirmations")
