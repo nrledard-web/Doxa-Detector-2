@@ -1329,8 +1329,8 @@ if analyze_submitted:
                 st.write(explication)
 else:
     st.info(translations[lang]["paste_longer_text"])
-    else:
-        st.info(translations[lang]["paste_longer_text"])
+else:
+    st.info(translations[lang]["paste_longer_text"])
 
     if st.session_state.get("article_source") == "paste":
         st.divider()
