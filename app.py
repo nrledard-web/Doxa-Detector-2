@@ -1294,10 +1294,10 @@ if analyze_submitted:
 
         st.markdown("## Explication IA des affirmations")
         show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
-        if not claims_df.empty:
-    st.dataframe(claims_df, use_container_width=True, hide_index=True)
+    if not claims_df.empty:
+        st.dataframe(claims_df, use_container_width=True, hide_index=True)
 
-    show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
+        show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
 
     if show_ai_explanations:
         st.markdown("## Explication IA des affirmations")
