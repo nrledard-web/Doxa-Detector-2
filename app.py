@@ -1358,3 +1358,25 @@ if show_method:
         f"- **{translations[lang]['cognitive_closure']}** : `(D * S) / (G + N)`\n\n"
         f"{translations[lang]['disclaimer']}"
     )
+if st.button("Tester l'explication IA"):
+    fake_scores = {
+        "verifiability": 8,
+        "source": 6,
+        "rhetoric": 12,
+        "normative": True,
+        "absolutist": False,
+        "corroboration": False,
+        "conceptual_density": "medium"
+    }
+
+    explication = explain_classification(
+        sentence="Heresy = a conscious contesting error (within a dogma)",
+        classification="Very fragile",
+        scores=fake_scores
+    )
+
+    st.write("### Score")
+    st.write("Very fragile")
+
+    st.write("### Pourquoi ce score")
+    st.write(explication)
