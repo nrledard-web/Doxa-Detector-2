@@ -1274,7 +1274,7 @@ if analyze_submitted:
 
     st.markdown(f"**{translations[lang]['interpretation']} :** {cog.interpret()}")
 
-    st.subheader(translations[lang]["hard_fact_checking_by_claim"])
+        st.subheader(translations[lang]["hard_fact_checking_by_claim"])
     claims_df = pd.DataFrame([
         {
             translations[lang]["claim"]: c.text,
@@ -1290,68 +1290,37 @@ if analyze_submitted:
     ])
 
     if not claims_df.empty:
-    st.dataframe(claims_df, use_container_width=True, hide_index=True)
+        st.dataframe(claims_df, use_container_width=True, hide_index=True)
 
-    st.markdown("## Explication IA des affirmations")
+        st.markdown("## Explication IA des affirmations")
 
-    for i, c in enumerate(result["claims"], start=1):
+        for i, c in enumerate(result["claims"], start=1):
+            classification = c.status
 
-        classification = c.status
+            scores = {
+                "verifiability": c.verifiability,
+                "source": 20 if c.has_source_cue else 5,
+                "rhetoric": c.risk,
+                "normative": c.absolutism > 0,
+                "absolutist": c.absolutism > 0,
+                "corroboration": False,
+                "conceptual_density": "medium"
+            }
 
-        scores = {
-            "verifiability": c.verifiability,
-            "source": 20 if c.has_source_cue else 5,
-            "rhetoric": c.risk,
-            "normative": c.absolutism > 0,
-            "absolutist": c.absolutism > 0,
-            "corroboration": False,
-            "conceptual_density": "medium"
-        }
+            with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
+                st.write("### Score")
+                st.write(classification)
 
-        with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
+                explication = explain_classification(
+                    sentence=c.text,
+                    classification=classification,
+                    scores=scores
+                )
 
-            st.write("### Score")
-            st.write(classification)
-
-            explication = explain_classification(
-                sentence=c.text,
-                classification=classification,
-                scores=scores
-            )
-
-            st.write("### Pourquoi ce score")
-            st.write(explication)
-
-else:
-    st.info(translations[lang]["paste_longer_text"])
-    st.markdown("## Explication IA des affirmations")
-
-    for i, c in enumerate(result["claims"], start=1):
-        # classification simple à partir du statut déjà calculé
-        classification = c.status
-
-        scores = {
-            "verifiability": c.verifiability,
-            "source": 20 if c.has_source_cue else 5,
-            "rhetoric": c.risk,
-            "normative": c.absolutism > 0,
-            "absolutist": c.absolutism > 0,
-            "corroboration": False,
-            "conceptual_density": "medium"
-        }
-
-        with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
-            st.write("### Score")
-            st.write(classification)
-
-            explication = explain_classification(
-                sentence=c.text,
-                classification=classification,
-                scores=scores
-            )
-
-            st.write("### Pourquoi ce score")
-            st.write(explication)
+                st.write("### Pourquoi ce score")
+                st.write(explication)
+    else:
+        st.info(translations[lang]["paste_longer_text"])
 
     # -----------------------------
     # Corroboration externe seulement pour texte collé
