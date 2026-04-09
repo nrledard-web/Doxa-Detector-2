@@ -164,6 +164,11 @@ translations = {
         "contradiction_signal": "Signal de contradiction",
         "detected": "Détecté",
         "not_detected": "Non détecté",
+        "voice_input": "🎙️ Dictée vocale",
+"voice_help": "Appuyez, parlez, puis arrêtez : la transcription sera ajoutée dans la zone de texte.",
+"voice_start": "🎤 Parler",
+"voice_stop": "⏹️ Stop",
+"voice_added": "Transcription ajoutée au texte.",
     },
     "English": {
         "title": "🧠 Mecroyance Lab — Credibility Analyzer",
