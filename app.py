@@ -567,6 +567,15 @@ translations = {
         "text_source": "Pinagmulan ng teksto",
         "manual_paste": "mano-manong paste",
         "loaded_url_source": "artikulong na-load mula URL",
+        "corroborated": "Nakoroborahan",
+        "mixed": "May halong pagtutugma",
+        "not_corroborated": "Hindi nakoroborahan",
+        "insufficiently_documented": "Hindi sapat ang dokumentasyon",
+        "corroboration_verdict": "Hatol ng corroboration",
+        "match_score": "Match score",
+        "contradiction_signal": "Signal ng contradiction",
+        "detected": "Nakita",
+        "not_detected": "Hindi nakita",
     },
 }
 
