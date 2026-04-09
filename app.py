@@ -1107,6 +1107,27 @@ if load_url_submitted:
 # -----------------------------
 previous_article = st.session_state.article
 
+st.subheader(translations[lang]["voice_input"])
+st.caption(translations[lang]["voice_help"])
+
+spoken_text = speech_to_text(
+    language="fr",
+    start_prompt=translations[lang]["voice_start"],
+    stop_prompt=translations[lang]["voice_stop"],
+    just_once=True,
+    use_container_width=True,
+    key="speech_to_text_app"
+)
+
+if spoken_text:
+    existing = st.session_state.article.strip()
+    addition = spoken_text.strip()
+
+    if addition:
+        st.session_state.article = f"{existing}\n{addition}".strip() if existing else addition
+        st.session_state.article_source = "paste"
+        st.success(translations[lang]["voice_added"])
+
 with st.form("article_form"):
     article = st.text_area(
         translations[lang]["paste"],
