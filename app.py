@@ -808,7 +808,7 @@ def analyze_multiple_articles(keyword: str, max_results: int = 10):
     return results
 
 # -----------------------------
-# Module de corroboration
+# Module de corroboration amélioré
 # (uniquement pour texte collé)
 # -----------------------------
 def extract_key_sentences_for_corroboration(text: str, max_sentences: int = 5) -> List[str]:
@@ -821,7 +821,7 @@ def extract_key_sentences_for_corroboration(text: str, max_sentences: int = 5) -
             score += 2
         if re.search(r'\d{4}|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre', s, re.I):
             score += 2
-        if re.search(r'[A-Z][a-z]+ [A-Z][a-z]+|[A-Z]{2,}', s):
+        if re.search(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}', s):
             score += 2
         if any(word in s.lower() for word in [
             "selon", "affirme", "déclare", "rapport", "étude", "expert",
@@ -833,10 +833,12 @@ def extract_key_sentences_for_corroboration(text: str, max_sentences: int = 5) -
             "choc", "scandale", "révolution", "urgent"
         ]):
             score += 1
+
         scored.append((score, s))
 
     scored.sort(reverse=True, key=lambda x: x[0])
     return [s for _, s in scored[:max_sentences]]
+
 
 def build_search_query_from_claim(claim: str) -> str:
     claim = re.sub(r'[^\w\s%\-]', ' ', claim)
@@ -844,6 +846,81 @@ def build_search_query_from_claim(claim: str) -> str:
     words = claim.split()
     important_words = [w for w in words if len(w) > 3][:12]
     return " ".join(important_words)
+
+
+def extract_claim_features(claim: str) -> Dict:
+    numbers = re.findall(r'\d+(?:[.,]\d+)?%?', claim)
+    years = re.findall(r'\b(?:19|20)\d{2}\b', claim)
+    proper_names = re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}', claim)
+    words = re.findall(r'\b\w+\b', claim.lower())
+
+    stopwords = {
+        "les", "des", "une", "dans", "avec", "pour", "that", "this", "from", "have",
+        "will", "être", "sont", "mais", "plus", "comme", "nous", "vous", "they",
+        "their", "about", "into", "sur", "par", "est", "ont", "aux", "the", "and",
+        "du", "de", "la", "le", "un", "une", "et", "ou", "en", "à", "au", "ce",
+        "ces", "ses", "son", "sa", "qui", "que", "quoi", "dont", "ainsi", "alors"
+    }
+
+    keywords = [w for w in words if len(w) > 4 and w not in stopwords]
+
+    return {
+        "numbers": list(set(numbers)),
+        "years": list(set(years)),
+        "proper_names": list(set(proper_names)),
+        "keywords": list(dict.fromkeys(keywords))[:12]
+    }
+
+
+def score_match_between_claim_and_result(claim: str, result_text: str) -> Dict:
+    features = extract_claim_features(claim)
+    rt = result_text.lower()
+
+    number_hits = sum(1 for n in features["numbers"] if n.lower() in rt)
+    year_hits = sum(1 for y in features["years"] if y.lower() in rt)
+    proper_name_hits = sum(1 for p in features["proper_names"] if p.lower() in rt)
+    keyword_hits = sum(1 for k in features["keywords"] if k.lower() in rt)
+
+    score = 0
+    score += number_hits * 3
+    score += year_hits * 2
+    score += proper_name_hits * 3
+    score += min(keyword_hits, 5) * 1.2
+
+    contradiction_markers = [
+        "false", "faux", "misleading", "trompeur", "incorrect", "inexact",
+        "debunked", "démenti", "refuted", "réfuté", "no evidence", "aucune preuve"
+    ]
+    contradiction_signal = any(marker in rt for marker in contradiction_markers)
+
+    return {
+        "score": round(score, 1),
+        "number_hits": number_hits,
+        "year_hits": year_hits,
+        "proper_name_hits": proper_name_hits,
+        "keyword_hits": keyword_hits,
+        "contradiction_signal": contradiction_signal
+    }
+
+
+def classify_corroboration(matches: List[Dict]) -> str:
+    if not matches:
+        return "Insuffisamment documentée"
+
+    best_score = max(m["match_score"]["score"] for m in matches)
+    contradiction_count = sum(1 for m in matches if m["match_score"]["contradiction_signal"])
+    strong_matches = sum(1 for m in matches if m["match_score"]["score"] >= 8)
+    medium_matches = sum(1 for m in matches if 4 <= m["match_score"]["score"] < 8)
+
+    if strong_matches >= 2 and contradiction_count == 0:
+        return "Corroborée"
+    elif best_score >= 8 and contradiction_count >= 1:
+        return "Mitigée"
+    elif medium_matches >= 1 or best_score >= 4:
+        return "Mitigée"
+    else:
+        return "Non corroborée"
+
 
 def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: int = 3) -> List[Dict]:
     claims = extract_key_sentences_for_corroboration(text, max_sentences=max_claims)
@@ -860,28 +937,34 @@ def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: in
         with DDGS() as ddgs:
             for claim in claims:
                 query = build_search_query_from_claim(claim)
-                search_results = list(ddgs.text(query, max_results=max_results_per_claim * 4))
+                search_results = list(ddgs.text(query, max_results=max_results_per_claim * 5))
 
                 filtered = []
                 for r in search_results:
                     url = r.get("href", "")
                     title = r.get("title", "")
                     body = r.get("body", "")
+                    combined_text = f"{title} {body}"
 
                     if any(domain in url for domain in trusted_domains):
+                        match_score = score_match_between_claim_and_result(claim, combined_text)
                         filtered.append({
                             "title": title,
                             "url": url,
-                            "snippet": body
+                            "snippet": body,
+                            "match_score": match_score
                         })
-                    if len(filtered) >= max_results_per_claim:
-                        break
+
+                filtered = sorted(filtered, key=lambda x: x["match_score"]["score"], reverse=True)[:max_results_per_claim]
+                verdict = classify_corroboration(filtered)
 
                 corroboration_results.append({
                     "claim": claim,
                     "query": query,
-                    "matches": filtered
+                    "matches": filtered,
+                    "verdict": verdict
                 })
+
     except Exception as e:
         st.warning(f"Erreur de corroboration : {e}")
 
