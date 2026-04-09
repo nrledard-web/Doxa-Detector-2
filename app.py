@@ -1408,8 +1408,7 @@ else:
                         st.warning(translations[lang]["no_strong_sources_found"])
         else:
             st.info(translations[lang]["no_corroboration_found"])
-else:
-    st.info(translations[lang]["paste_text_or_load_url"])
+
 
 # -----------------------------
 # Méthode
