@@ -1293,6 +1293,34 @@ if analyze_submitted:
         st.dataframe(claims_df, use_container_width=True, hide_index=True)
     else:
         st.info(translations[lang]["paste_longer_text"])
+            st.markdown("## Explication IA des affirmations")
+
+    for i, c in enumerate(result["claims"], start=1):
+        # classification simple à partir du statut déjà calculé
+        classification = c.status
+
+        scores = {
+            "verifiability": c.verifiability,
+            "source": 20 if c.has_source_cue else 5,
+            "rhetoric": c.risk,
+            "normative": c.absolutism > 0,
+            "absolutist": c.absolutism > 0,
+            "corroboration": False,
+            "conceptual_density": "medium"
+        }
+
+        with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
+            st.write("### Score")
+            st.write(classification)
+
+            explication = explain_classification(
+                sentence=c.text,
+                classification=classification,
+                scores=scores
+            )
+
+            st.write("### Pourquoi ce score")
+            st.write(explication)
 
     # -----------------------------
     # Corroboration externe seulement pour texte collé
