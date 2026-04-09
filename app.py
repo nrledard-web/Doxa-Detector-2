@@ -1321,7 +1321,7 @@ if analyze_submitted:
             st.write(explication)
 else:
     st.info(translations[lang]["paste_longer_text"])
-            st.markdown("## Explication IA des affirmations")
+    st.markdown("## Explication IA des affirmations")
 
     for i, c in enumerate(result["claims"], start=1):
         # classification simple à partir du statut déjà calculé
