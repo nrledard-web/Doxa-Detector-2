@@ -11,7 +11,16 @@ st.set_page_config(
     page_icon="🧠",
     layout="wide",
 )
+st.title("Mécroyance Lab — Analyse critique de la crédibilité")
 
+st.info(
+"""
+Évaluez la solidité d’un texte, identifiez ses fragilités et examinez la robustesse de ses affirmations.
+
+*Mécroyance Lab n’est ni un gadget de vérification ni un simple score automatique.  
+C’est un laboratoire de lecture critique, conçu pour comprendre non seulement si un texte paraît crédible, mais comment il le devient, où il vacille, et jusqu’à quel point il résiste au réel.*
+"""
+)
 # -----------------------------
 # Dictionnaire de traduction
 # -----------------------------
