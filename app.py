@@ -1198,224 +1198,49 @@ st.caption(
 # -----------------------------
 # Analyse principale
 # -----------------------------
-if analyze_submitted:
-    result = analyze_article(article)
+def explain_classification(sentence, classification, scores):
+    prompt = f"""
+You are an epistemic analysis assistant.
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric(translations[lang]["classic_score"], result["M"], help=translations[lang]["help_classic_score"])
-    col2.metric(translations[lang]["improved_score"], result["improved"], help=translations[lang]["help_improved_score"])
-    col3.metric(translations[lang]["hard_fact_score"], result["hard_fact_score"], help=translations[lang]["help_hard_fact_score"])
+Sentence:
+{sentence}
 
-    score = result["hard_fact_score"]
-    couleur, etiquette, message = (
-        ("🔴", translations[lang]["fragile"], translations[lang]["fragile_message"])
-        if score <= 6 else
-        (("🟠", translations[lang]["doubtful"], translations[lang]["doubtful_message"])
-         if score <= 11 else
-         (("🟡", translations[lang]["plausible"], translations[lang]["plausible_message"])
-          if score <= 15 else
-          ("🟢", translations[lang]["robust"], translations[lang]["robust_message"])))
-    )
+Classification:
+{classification}
 
-    st.subheader(f"{couleur} {translations[lang]['credibility_gauge']} : {etiquette}")
-    st.progress(score / 20)
-    st.caption(f"{translations[lang]['score']} : {score}/20 — {message}")
+Signals:
+Verifiability score: {scores['verifiability']}/20
+Source strength score: {scores['source']}/20
+Rhetorical intensity: {scores['rhetoric']}/20
+Normative language detected: {scores['normative']}
+Absolutist language detected: {scores['absolutist']}
+External corroboration found: {scores['corroboration']}
+Conceptual density: {scores['conceptual_density']}
 
-    st.subheader(f"{translations[lang]['verdict']} : {result['verdict']}")
-    st.subheader(translations[lang]["summary"])
+Explain why the sentence received this classification.
+Then propose a stronger formulation.
 
-    m1, m2 = st.columns(2)
-    m1.metric("G — gnōsis", result["G"])
-    m2.metric("N — nous", result["N"])
+Format:
 
-    m3, m4 = st.columns(2)
-    m3.metric("D — doxa", result["D"])
-    m4.metric("V — vérifiabilité", result["V"])
+Explanation:
+...
 
-    m5, m6 = st.columns(2)
-    m5.metric(translations[lang]["qs"], result["source_quality"])
-    m6.metric(translations[lang]["rc"], result["avg_claim_risk"])
+Main weaknesses detected:
+- ...
+- ...
 
-    m7, m8 = st.columns(2)
-    m7.metric(translations[lang]["vc"], result["avg_claim_verifiability"])
-    m8.metric(translations[lang]["f"], len(result["red_flags"]))
-
-    with st.expander(translations[lang]["strengths_detected"], expanded=True):
-        if result["strengths"]:
-            for item in result["strengths"]:
-                st.success(item)
-        else:
-            st.info(translations[lang]["few_strong_signals"])
-
-    with st.expander(translations[lang]["weaknesses_detected"], expanded=True):
-        if result["weaknesses"]:
-            for item in result["weaknesses"]:
-                st.error(item)
-        else:
-            st.success(translations[lang]["no_major_weakness"])
-
-    st.divider()
-    st.subheader(translations[lang]["llm_analysis"])
-    st.info(translations[lang]["llm_intro"])
-
-    cog = Cognition(result["G"], result["N"], result["D"])
-    overconfidence = result["D"] - (result["G"] + result["N"])
-    calibration = result["D"] / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
-    revisability = (result["G"] + result["N"] + result["V"]) - result["D"]
-    closure = (result["D"] * (1 + len(result["red_flags"]) / 5)) / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
-
-    c1, c2 = st.columns(2)
-    c1.metric(translations[lang]["overconfidence"], round(overconfidence, 2))
-    c2.metric(translations[lang]["calibration"], round(calibration, 2))
-
-    c3, c4 = st.columns(2)
-    c3.metric(translations[lang]["revisability"], round(revisability, 2))
-    c4.metric(translations[lang]["cognitive_closure"], round(closure, 2))
-
-    st.markdown(f"**{translations[lang]['interpretation']} :** {cog.interpret()}")
-
-    st.subheader(translations[lang]["hard_fact_checking_by_claim"])
-    claims_df = pd.DataFrame([
-        {
-            translations[lang]["claim"]: c.text,
-            translations[lang]["status"]: c.status,
-            f"{translations[lang]['verifiability']} /20": c.verifiability,
-            f"{translations[lang]['risk']} /20": c.risk,
-            translations[lang]["number"]: translations[lang]["yes"] if c.has_number else translations[lang]["no"],
-            translations[lang]["date"]: translations[lang]["yes"] if c.has_date else translations[lang]["no"],
-            translations[lang]["named_entity"]: translations[lang]["yes"] if c.has_named_entity else translations[lang]["no"],
-            translations[lang]["attributed_source"]: translations[lang]["yes"] if c.has_source_cue else translations[lang]["no"],
-        }
-        for c in result["claims"]
-    ])
-
-    if not claims_df.empty:
-        st.dataframe(claims_df, use_container_width=True, hide_index=True)
-
-        st.markdown("## Explication IA des affirmations")
-        show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
-    if not claims_df.empty:
-        st.dataframe(claims_df, use_container_width=True, hide_index=True)
-
-        show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
-
-    if show_ai_explanations:
-        st.markdown("## Explication IA des affirmations")
-
-        for i, c in enumerate(result["claims"][:3], start=1):
-            classification = c.status
-
-            scores = {
-                "verifiability": c.verifiability,
-                "source": 20 if c.has_source_cue else 5,
-                "rhetoric": c.risk,
-                "normative": c.absolutism > 0,
-                "absolutist": c.absolutism > 0,
-                "corroboration": False,
-                "conceptual_density": "medium"
-            }
-
-            with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
-                st.write("### Score")
-                st.write(classification)
-
-                explication = explain_classification(
-                    sentence=c.text,
-                    classification=classification,
-                    scores=scores
-                )
-                st.write("### Pourquoi ce score")
-                st.write(explication)
-
-    else:
-        st.info(translations[lang]["paste_longer_text"])
-
-    if st.session_state.get("article_source") == "paste":
-        st.divider()
-        st.subheader(translations[lang]["external_corroboration_module"])
-        st.caption(translations[lang]["external_corroboration_caption"])
-
-        with st.spinner(translations[lang]["corroboration_in_progress"]):
-            corroboration = corroborate_claims(article, max_claims=5, max_results_per_claim=3)
-
-        if corroboration:
-            for i, item in enumerate(corroboration, start=1):
-                title_preview = item["claim"][:140] + ("..." if len(item["claim"]) > 140 else "")
-                verdict = item["verdict"]
-
-                if verdict == "Corroborée":
-                    verdict_display = f"🟢 {translations[lang]['corroborated']}"
-                elif verdict == "Mitigée":
-                    verdict_display = f"🟠 {translations[lang]['mixed']}"
-                elif verdict == "Non corroborée":
-                    verdict_display = f"🔴 {translations[lang]['not_corroborated']}"
-                else:
-                    verdict_display = f"⚪ {translations[lang]['insufficiently_documented']}"
-
-                with st.expander(f"Affirmation {i} : {title_preview}", expanded=(i == 1)):
-                    st.markdown(f"**{translations[lang]['corroboration_verdict']} :** {verdict_display}")
-                    st.markdown(f"**{translations[lang]['generated_query']} :** `{item['query']}`")
-
-                    if item["matches"]:
-                        for match in item["matches"]:
-                            st.markdown(f"**[{match['title']}]({match['url']})**")
-                            st.markdown(
-                                f"- **{translations[lang]['match_score']}** : {match['match_score']['score']}\n"
-                                f"- **{translations[lang]['contradiction_signal']}** : "
-                                f"{translations[lang]['detected'] if match['match_score']['contradiction_signal'] else translations[lang]['not_detected']}"
-                            )
-                            if match["snippet"]:
-                                st.caption(match["snippet"])
-                    else:
-                        st.warning(translations[lang]["no_strong_sources_found"])
-        else:
-            st.info(translations[lang]["no_corroboration_found"])
-else:
-    st.info(translations[lang]["paste_text_or_load_url"])
-
-    # -----------------------------
-    # Corroboration externe seulement pour texte collé
-    # -----------------------------
-    if st.session_state.get("article_source") == "paste":
-        st.divider()
-        st.subheader(translations[lang]["external_corroboration_module"])
-        st.caption(translations[lang]["external_corroboration_caption"])
-
-        with st.spinner(translations[lang]["corroboration_in_progress"]):
-            corroboration = corroborate_claims(article, max_claims=5, max_results_per_claim=3)
-
-        if corroboration:
-            for i, c in enumerate(result["claims"][:3], start=1):
-                title_preview = item["claim"][:140] + ("..." if len(item["claim"]) > 140 else "")
-                verdict = item["verdict"]
-
-                if verdict == "Corroborée":
-                    verdict_display = f"🟢 {translations[lang]['corroborated']}"
-                elif verdict == "Mitigée":
-                    verdict_display = f"🟠 {translations[lang]['mixed']}"
-                elif verdict == "Non corroborée":
-                    verdict_display = f"🔴 {translations[lang]['not_corroborated']}"
-                else:
-                    verdict_display = f"⚪ {translations[lang]['insufficiently_documented']}"
-
-                with st.expander(f"Affirmation {i} : {title_preview}", expanded=(i == 1)):
-                    st.markdown(f"**{translations[lang]['corroboration_verdict']} :** {verdict_display}")
-                    st.markdown(f"**{translations[lang]['generated_query']} :** `{item['query']}`")
-
-                    if item["matches"]:
-                        for match in item["matches"]:
-                            st.markdown(f"**[{match['title']}]({match['url']})**")
-                            st.markdown(
-                                f"- **{translations[lang]['match_score']}** : {match['match_score']['score']}\n"
-                                f"- **{translations[lang]['contradiction_signal']}** : "
-                                f"{translations[lang]['detected'] if match['match_score']['contradiction_signal'] else translations[lang]['not_detected']}"
-                            )
-                            if match["snippet"]:
-                                st.caption(match["snippet"])
-                    else:
-                        st.warning(translations[lang]["no_strong_sources_found"])
-        else:
-            st.info(translations[lang]["no_corroboration_found"])
+Suggested stronger formulation:
+...
+"""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-5-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Impossible de générer l’explication IA : {e}"
 
 
 # -----------------------------
