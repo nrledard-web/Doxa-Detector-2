@@ -92,7 +92,7 @@ translations = {
         "improved_variant": "Variante améliorée",
         "addition_of_v_and_r": "Ajout de V pour la vérifiabilité et de R comme pénalité rhétorique.",
         "hard_fact_checking_module": "Module de fact-checking dur",
-        "claim_evaluation_criteria": "Chaque phrase est traitée comme une affirmation potentielle, puis évaluée selon:",
+        "claim_evaluation_criteria": "Chaque phrase est traitée comme une affirmation potentielle, puis évaluée selon :",
         "criteria_list": "- présence de dates, nombres, noms propres,\n- présence d'une attribution claire,\n- degré d'absolutisme,\n- charge sensationnaliste,\n- qualité probable des sources mentionnées,\n- signaux rouges narratifs.",
         "practical_hard_fact_formula": "Formule pratique du hard fact score",
         "qs": "QS : qualité des sources",
@@ -146,7 +146,6 @@ translations = {
         "text_source": "Source du texte",
         "manual_paste": "copier-coller manuel",
         "loaded_url_source": "article chargé par URL",
-        "corroborated": "Corroborée",
         "corroborated": "Corroborée",
         "mixed": "Mitigée",
         "not_corroborated": "Non corroborée",
@@ -373,7 +372,7 @@ translations = {
         "improved_variant": "Variante Mejorada",
         "addition_of_v_and_r": "Adición de V para verificabilidad y R como penalización retórica.",
         "hard_fact_checking_module": "Módulo de Fact-Checking Duro",
-        "claim_evaluation_criteria": "Cada oración se trata como una afirmación potencial, luego se evalúa según:",
+        "claim_evaluation_criteria": "Cada oración se trata como una afirmación potencial, luego se evalúa según :",
         "criteria_list": "- presencia de fechas, números, nombres propios,\n- presencia de atribución clara,\n- grado de absolutismo,\n- carga sensacionalista,\n- calidad probable de las fuentes mencionadas,\n- señales rojas narrativas.",
         "practical_hard_fact_formula": "Fórmula Práctica del Hard Fact Score",
         "qs": "QS: calidad de las fuentes",
@@ -427,15 +426,15 @@ translations = {
         "text_source": "Fuente del texto",
         "manual_paste": "copiado y pegado manual",
         "loaded_url_source": "artículo cargado desde URL",
-        "corroborated": "Nakoroborahan",
-        "mixed": "May halong pagtutugma",
-        "not_corroborated": "Hindi nakoroborahan",
-        "insufficiently_documented": "Hindi sapat ang dokumentasyon",
-        "corroboration_verdict": "Hatol ng corroboration",
-        "match_score": "Match score",
-        "contradiction_signal": "Signal ng contradiction",
-        "detected": "Nakita",
-        "not_detected": "Hindi nakita",
+        "corroborated": "Corroborada",
+        "mixed": "Matizada",
+        "not_corroborated": "No corroborada",
+        "insufficiently_documented": "Insuficientemente documentada",
+        "corroboration_verdict": "Veredicto de corroboración",
+        "match_score": "Puntuación de coincidencia",
+        "contradiction_signal": "Señal de contradicción",
+        "detected": "Detectado",
+        "not_detected": "No detectado",
     },
     "Philippine": {
         "title": "🧠 Mecroyance Lab — Credibility Analyzer",
@@ -513,7 +512,7 @@ translations = {
         "improved_variant": "Improved Variant",
         "addition_of_v_and_r": "Pagdaragdag ng V para sa verifiability at R bilang parusang retorika.",
         "hard_fact_checking_module": "Hard Fact-Checking Module",
-        "claim_evaluation_criteria": "Ang bawat pangungusap ay itinuturing na potensyal na claim, pagkatapos ay sinusuri ayon sa:",
+        "claim_evaluation_criteria": "Ang bawat pangungusap ay itinuturing na potensyal na claim, pagkatapos ay sinusuri ayon sa :",
         "criteria_list": "- pagkakaroon ng mga petsa, numero, tamang pangalan,\n- pagkakaroon ng malinaw na attribution,\n- antas ng absolutismo,\n- sensationalist na karga,\n- malamang na kalidad ng mga nabanggit na source,\n- mga narrative red flag.",
         "practical_hard_fact_formula": "Praktikal na Formula ng Hard Fact Score",
         "qs": "QS: kalidad ng mga source",
@@ -580,9 +579,9 @@ translations = {
 }
 
 # -----------------------------
-# Langue par défaut
+# Langue principale
 # -----------------------------
-lang = st.sidebar.selectbox("Langue / Language", list(translations.keys()))
+lang = st.selectbox("Langue / Language", list(translations.keys()))
 
 # -----------------------------
 # Classes de Cognition
@@ -624,7 +623,7 @@ class Cognition:
 SAMPLE_ARTICLE = """L'intelligence artificielle va remplacer 80% des emplois d'ici 2030, selon une étude choc publiée hier par le cabinet GlobalTech. Le rapport de 45 pages affirme que les secteurs de la finance et de la santé seront les plus touchés. "C'est une révolution sans précédent", déclare Jean Dupont, expert en robotique. Cependant, certains économistes comme Marie Curie restent prudents : "Il faut nuancer ces chiffres, car de nouveaux métiers vont apparaître." L'étude précise que 12 millions de postes pourraient être créés en Europe. Malgré cela, l'inquiétude grandit chez les salariés qui craignent pour leur avenir. Il est absolument certain que nous allons vers une crise sociale majeure si rien n'est fait immédiatement."""
 
 # -----------------------------
-# Fonctions utilitaires
+# Utilitaires
 # -----------------------------
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -635,7 +634,7 @@ def extract_article_from_url(url: str) -> str:
         article.download()
         article.parse()
         return article.text
-    except:
+    except Exception:
         return ""
 
 def search_articles_by_keyword(keyword: str, max_results: int = 10) -> List[Dict]:
@@ -654,12 +653,12 @@ def search_articles_by_keyword(keyword: str, max_results: int = 10) -> List[Dict
             query = f"{keyword} actualités news analyse reportage étude article"
             ddg_results = list(ddgs.text(query, max_results=max_results * 5))
             for r in ddg_results:
-                url = r.get('href', '')
+                url = r.get("href", "")
                 if any(domain in url for domain in trusted_domains):
                     results.append({
-                        "title": r.get('title', 'Sans titre'),
+                        "title": r.get("title", "Sans titre"),
                         "url": url,
-                        "source": url.split('/')[2] if '/' in url else url
+                        "source": url.split("/")[2] if "/" in url else url
                     })
                     if len(results) >= max_results:
                         break
@@ -681,32 +680,38 @@ class Claim:
     status: str
 
 def analyze_claim(sentence: str) -> Claim:
-    has_number = bool(re.search(r'\d+', sentence))
+    has_number = bool(re.search(r"\d+", sentence))
     has_date = bool(re.search(
-        r'\d{4}|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche',
+        r"\d{4}|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche",
         sentence, re.I
     ))
-    has_named_entity = bool(re.search(r'[A-Z][a-z]+ [A-Z][a-z]+|[A-Z]{2,}', sentence))
+    has_named_entity = bool(re.search(r"[A-Z][a-z]+ [A-Z][a-z]+|[A-Z]{2,}", sentence))
     source_cues = [
-        'selon', 'affirme', 'déclare', 'rapport', 'étude', 'expert', 'source', 'dit', 'écrit', 'publié',
-        'according to', 'claims', 'states', 'report', 'study', 'expert', 'source', 'says', 'writes', 'published'
+        "selon", "affirme", "déclare", "rapport", "étude", "expert", "source", "dit", "écrit", "publié",
+        "according to", "claims", "states", "report", "study", "expert", "source", "says", "writes", "published"
     ]
     has_source_cue = any(cue in sentence.lower() for cue in source_cues)
+
     absolutist_words = [
-        'toujours', 'jamais', 'absolument', 'certain', 'prouvé', 'incontestable', 'tous', 'aucun',
-        'always', 'never', 'absolutely', 'certain', 'proven', 'unquestionable', 'all', 'none'
+        "toujours", "jamais", "absolument", "certain", "prouvé", "incontestable", "tous", "aucun",
+        "always", "never", "absolutely", "certain", "proven", "unquestionable", "all", "none"
     ]
-    absolutism = sum(1 for word in absolutist_words if word in sentence.lower())
     emotional_words = [
-        'choc', 'incroyable', 'terrible', 'peur', 'menace', 'scandale', 'révolution', 'urgent',
-        'shock', 'incredible', 'terrible', 'fear', 'threat', 'scandal', 'revolution', 'urgent'
+        "choc", "incroyable", "terrible", "peur", "menace", "scandale", "révolution", "urgent",
+        "shock", "incredible", "terrible", "fear", "threat", "scandal", "revolution", "urgent"
     ]
+
+    absolutism = sum(1 for word in absolutist_words if word in sentence.lower())
     emotional_charge = sum(1 for word in emotional_words if word in sentence.lower())
+
     v_score = clamp((has_number * 5) + (has_date * 5) + (has_named_entity * 5) + (has_source_cue * 5), 0, 20)
     r_score = clamp((absolutism * 7) + (emotional_charge * 7), 0, 20)
+
     status = (
-        translations[lang]["very_fragile"] if v_score < 5
-        else (translations[lang]["to_verify"] if v_score < 12 else translations[lang]["rather_verifiable"])
+        translations[lang]["very_fragile"]
+        if v_score < 5 else (
+            translations[lang]["to_verify"] if v_score < 12 else translations[lang]["rather_verifiable"]
+        )
     )
     return Claim(
         sentence, has_number, has_date, has_named_entity, has_source_cue,
@@ -715,16 +720,16 @@ def analyze_claim(sentence: str) -> Claim:
 
 def analyze_article(text: str):
     words = text.split()
-    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if len(s.strip()) > 10]
+    sentences = [s.strip() for s in re.split(r"[.!?]+", text) if len(s.strip()) > 10]
     article_length = len(words)
 
     source_markers = len(re.findall(
-        r'selon|affirme|déclare|rapport|étude|expert|source|according to|claims|states|report|study|expert|source',
+        r"selon|affirme|déclare|rapport|étude|expert|source|according to|claims|states|report|study|expert|source",
         text.lower()
     ))
     citation_like = len(re.findall(r'"|\'|«|»', text))
     nuance_markers = len(re.findall(
-        r'cependant|pourtant|néanmoins|toutefois|mais|nuancer|prudence|possible|peut-être|however|yet|nevertheless|nonetheless|but|nuance|caution|possible|maybe',
+        r"cependant|pourtant|néanmoins|toutefois|mais|nuancer|prudence|possible|peut-être|however|yet|nevertheless|nonetheless|but|nuance|caution|possible|maybe",
         text.lower()
     ))
 
@@ -732,11 +737,11 @@ def analyze_article(text: str):
     N = clamp(nuance_markers * 2 + (article_length / 100), 0, 10)
 
     certainty = len(re.findall(
-        r'certain|absolument|prouvé|évident|incontestable|certainly|absolutely|proven|obvious|unquestionable',
+        r"certain|absolument|prouvé|évident|incontestable|certainly|absolutely|proven|obvious|unquestionable",
         text.lower()
     ))
     emotional = len(re.findall(
-        r'choc|incroyable|terrible|peur|menace|scandale|révolution|urgent|shock|incredible|terrible|fear|threat|scandal|revolution|urgent',
+        r"choc|incroyable|terrible|peur|menace|scandale|révolution|urgent|shock|incredible|terrible|fear|threat|scandal|revolution|urgent",
         text.lower()
     ))
 
@@ -768,12 +773,9 @@ def analyze_article(text: str):
     hard_fact_score = round(clamp(hard_fact_score_raw + 8, 0, 20), 1)
 
     verdict = (
-        translations[lang]["low_credibility"] if hard_fact_score < 6
-        else (
-            translations[lang]["prudent_credibility"] if hard_fact_score < 10
-            else (
-                translations[lang]["rather_credible"] if hard_fact_score < 15
-                else translations[lang]["strong_credibility"]
+        translations[lang]["low_credibility"] if hard_fact_score < 6 else (
+            translations[lang]["prudent_credibility"] if hard_fact_score < 10 else (
+                translations[lang]["rather_credible"] if hard_fact_score < 15 else translations[lang]["strong_credibility"]
             )
         )
     )
@@ -829,36 +831,35 @@ def analyze_multiple_articles(keyword: str, max_results: int = 10):
     results = []
     for art in articles:
         try:
-            full_text = extract_article_from_url(art['url'])
+            full_text = extract_article_from_url(art["url"])
             if len(full_text) > 200:
                 analysis = analyze_article(full_text)
                 results.append({
-                    "Source": art['source'],
-                    "Titre": art['title'],
-                    "Score classique": analysis['M'],
-                    "Hard Fact Score": analysis['hard_fact_score'],
-                    "Verdict": analysis['verdict'],
-                    "URL": art['url']
+                    "Source": art["source"],
+                    "Titre": art["title"],
+                    "Score classique": analysis["M"],
+                    "Hard Fact Score": analysis["hard_fact_score"],
+                    "Verdict": analysis["verdict"],
+                    "URL": art["url"],
                 })
-        except:
+        except Exception:
             continue
     return results
 
 # -----------------------------
 # Module de corroboration amélioré
-# (uniquement pour texte collé)
 # -----------------------------
 def extract_key_sentences_for_corroboration(text: str, max_sentences: int = 5) -> List[str]:
-    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if len(s.strip()) > 40]
+    sentences = [s.strip() for s in re.split(r"[.!?]+", text) if len(s.strip()) > 40]
     scored = []
 
     for s in sentences:
         score = 0
-        if re.search(r'\d+', s):
+        if re.search(r"\d+", s):
             score += 2
-        if re.search(r'\d{4}|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre', s, re.I):
+        if re.search(r"\d{4}|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre", s, re.I):
             score += 2
-        if re.search(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}', s):
+        if re.search(r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}", s):
             score += 2
         if any(word in s.lower() for word in [
             "selon", "affirme", "déclare", "rapport", "étude", "expert",
@@ -870,26 +871,23 @@ def extract_key_sentences_for_corroboration(text: str, max_sentences: int = 5) -
             "choc", "scandale", "révolution", "urgent"
         ]):
             score += 1
-
         scored.append((score, s))
 
     scored.sort(reverse=True, key=lambda x: x[0])
     return [s for _, s in scored[:max_sentences]]
 
-
 def build_search_query_from_claim(claim: str) -> str:
-    claim = re.sub(r'[^\w\s%\-]', ' ', claim)
-    claim = re.sub(r'\s+', ' ', claim).strip()
+    claim = re.sub(r"[^\w\s%\-]", " ", claim)
+    claim = re.sub(r"\s+", " ", claim).strip()
     words = claim.split()
     important_words = [w for w in words if len(w) > 3][:12]
     return " ".join(important_words)
 
-
 def extract_claim_features(claim: str) -> Dict:
-    numbers = re.findall(r'\d+(?:[.,]\d+)?%?', claim)
-    years = re.findall(r'\b(?:19|20)\d{2}\b', claim)
-    proper_names = re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}', claim)
-    words = re.findall(r'\b\w+\b', claim.lower())
+    numbers = re.findall(r"\d+(?:[.,]\d+)?%?", claim)
+    years = re.findall(r"\b(?:19|20)\d{2}\b", claim)
+    proper_names = re.findall(r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+|[A-Z]{2,}", claim)
+    words = re.findall(r"\b\w+\b", claim.lower())
 
     stopwords = {
         "les", "des", "une", "dans", "avec", "pour", "that", "this", "from", "have",
@@ -898,16 +896,14 @@ def extract_claim_features(claim: str) -> Dict:
         "du", "de", "la", "le", "un", "une", "et", "ou", "en", "à", "au", "ce",
         "ces", "ses", "son", "sa", "qui", "que", "quoi", "dont", "ainsi", "alors"
     }
-
     keywords = [w for w in words if len(w) > 4 and w not in stopwords]
 
     return {
         "numbers": list(set(numbers)),
         "years": list(set(years)),
         "proper_names": list(set(proper_names)),
-        "keywords": list(dict.fromkeys(keywords))[:12]
+        "keywords": list(dict.fromkeys(keywords))[:12],
     }
-
 
 def score_match_between_claim_and_result(claim: str, result_text: str) -> Dict:
     features = extract_claim_features(claim)
@@ -936,9 +932,8 @@ def score_match_between_claim_and_result(claim: str, result_text: str) -> Dict:
         "year_hits": year_hits,
         "proper_name_hits": proper_name_hits,
         "keyword_hits": keyword_hits,
-        "contradiction_signal": contradiction_signal
+        "contradiction_signal": contradiction_signal,
     }
-
 
 def classify_corroboration(matches: List[Dict]) -> str:
     if not matches:
@@ -957,7 +952,6 @@ def classify_corroboration(matches: List[Dict]) -> str:
         return "Mitigée"
     else:
         return "Non corroborée"
-
 
 def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: int = 3) -> List[Dict]:
     claims = extract_key_sentences_for_corroboration(text, max_sentences=max_claims)
@@ -989,7 +983,7 @@ def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: in
                             "title": title,
                             "url": url,
                             "snippet": body,
-                            "match_score": match_score
+                            "match_score": match_score,
                         })
 
                 filtered = sorted(filtered, key=lambda x: x["match_score"]["score"], reverse=True)[:max_results_per_claim]
@@ -999,7 +993,7 @@ def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: in
                     "claim": claim,
                     "query": query,
                     "matches": filtered,
-                    "verdict": verdict
+                    "verdict": verdict,
                 })
 
     except Exception as e:
@@ -1013,13 +1007,12 @@ def corroborate_claims(text: str, max_claims: int = 5, max_results_per_claim: in
 BANNER_URL = "https://raw.githubusercontent.com/nrledard-web/Doxa-Detector-Cognitive-Credibility-Analyzer/main/banner.png"
 try:
     st.image(BANNER_URL, use_container_width=True)
-except:
+except Exception:
     st.title(translations[lang]["title"])
 
 st.caption(translations[lang]["tagline"])
 
-with st.sidebar:
-    st.header(translations[lang]["settings"])
+with st.expander(translations[lang]["settings"], expanded=False):
     use_sample = st.button(translations[lang]["load_example"])
     show_method = st.toggle(translations[lang]["show_method"], value=True)
     st.divider()
@@ -1041,6 +1034,9 @@ if use_sample:
     st.session_state.article = SAMPLE_ARTICLE
     st.session_state.article_source = "paste"
 
+# -----------------------------
+# Analyse multiple par sujet
+# -----------------------------
 st.subheader(translations[lang]["analyze_multiple_articles_by_topic"])
 keyword = st.text_input(translations[lang]["topic"], placeholder="ex : intelligence artificielle")
 
@@ -1048,13 +1044,16 @@ if st.button(translations[lang]["analyze_topic"], key="analyze_topic"):
     if keyword.strip():
         st.info(translations[lang]["searching_analyzing_articles"])
         multiple_results = analyze_multiple_articles(keyword.strip(), max_results=10)
+
         if multiple_results:
             df_multi = pd.DataFrame(multiple_results).sort_values("Hard Fact Score", ascending=False)
             st.success(f"{len(df_multi)} {translations[lang]['articles_analyzed']}")
-            c1, c2, c3 = st.columns(3)
+
+            c1, c2 = st.columns(2)
             c1.metric(translations[lang]["analyzed_articles"], len(df_multi))
             c2.metric(translations[lang]["avg_hard_fact"], round(df_multi["Hard Fact Score"].mean(), 1))
-            c3.metric(translations[lang]["avg_classic_score"], round(df_multi["Score classique"].mean(), 1))
+
+            st.metric(translations[lang]["avg_classic_score"], round(df_multi["Score classique"].mean(), 1))
 
             ecart_type_hf = df_multi["Hard Fact Score"].std()
             indice_doxa = "high" if ecart_type_hf < 1.5 else ("medium" if ecart_type_hf < 3 else "low")
@@ -1070,9 +1069,14 @@ if st.button(translations[lang]["analyze_topic"], key="analyze_topic"):
     else:
         st.warning(translations[lang]["enter_keyword_first"])
 
-url = st.text_input(translations[lang]["url"])
+# -----------------------------
+# Chargement URL via formulaire
+# -----------------------------
+with st.form("url_form"):
+    url = st.text_input(translations[lang]["url"])
+    load_url_submitted = st.form_submit_button(translations[lang]["load_url"])
 
-if st.button(translations[lang]["load_url"], key="load_url"):
+if load_url_submitted:
     if url:
         texte = extract_article_from_url(url)
         if texte:
@@ -1084,23 +1088,36 @@ if st.button(translations[lang]["load_url"], key="load_url"):
     else:
         st.warning(translations[lang]["paste_url_first"])
 
+# -----------------------------
+# Texte collé via formulaire
+# -----------------------------
 previous_article = st.session_state.article
-article = st.text_area(translations[lang]["paste"], value=st.session_state.article, height=320)
+
+with st.form("article_form"):
+    article = st.text_area(
+        translations[lang]["paste"],
+        value=st.session_state.article,
+        height=220
+    )
+    analyze_submitted = st.form_submit_button(
+        translations[lang]["analyze"],
+        use_container_width=True
+    )
 
 if article.strip() != previous_article.strip():
     st.session_state.article_source = "paste"
 
 st.session_state.article = article
 
-if not url.strip():
-    st.session_state.article_source = "paste"
-
 st.caption(
     f"{translations[lang]['text_source']} : "
     f"{translations[lang]['manual_paste'] if st.session_state.get('article_source') == 'paste' else translations[lang]['loaded_url_source']}"
 )
 
-if st.button(translations[lang]["analyze"], use_container_width=True, type="primary", key="analyze_single"):
+# -----------------------------
+# Analyse principale
+# -----------------------------
+if analyze_submitted:
     result = analyze_article(article)
 
     col1, col2, col3 = st.columns(3)
@@ -1126,15 +1143,19 @@ if st.button(translations[lang]["analyze"], use_container_width=True, type="prim
     st.subheader(f"{translations[lang]['verdict']} : {result['verdict']}")
     st.subheader(translations[lang]["summary"])
 
-    m1, m2, m3, m4 = st.columns(4)
+    m1, m2 = st.columns(2)
     m1.metric("G — gnōsis", result["G"])
     m2.metric("N — nous", result["N"])
+
+    m3, m4 = st.columns(2)
     m3.metric("D — doxa", result["D"])
     m4.metric("V — vérifiabilité", result["V"])
 
-    m5, m6, m7, m8 = st.columns(4)
+    m5, m6 = st.columns(2)
     m5.metric(translations[lang]["qs"], result["source_quality"])
     m6.metric(translations[lang]["rc"], result["avg_claim_risk"])
+
+    m7, m8 = st.columns(2)
     m7.metric(translations[lang]["vc"], result["avg_claim_verifiability"])
     m8.metric(translations[lang]["f"], len(result["red_flags"]))
 
@@ -1160,14 +1181,13 @@ if st.button(translations[lang]["analyze"], use_container_width=True, type="prim
     overconfidence = result["D"] - (result["G"] + result["N"])
     calibration = result["D"] / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
     revisability = (result["G"] + result["N"] + result["V"]) - result["D"]
-    closure = (
-        (result["D"] * (1 + len(result["red_flags"]) / 5)) / (result["G"] + result["N"])
-        if (result["G"] + result["N"]) > 0 else 10
-    )
+    closure = (result["D"] * (1 + len(result["red_flags"]) / 5)) / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2 = st.columns(2)
     c1.metric(translations[lang]["overconfidence"], round(overconfidence, 2))
     c2.metric(translations[lang]["calibration"], round(calibration, 2))
+
+    c3, c4 = st.columns(2)
     c3.metric(translations[lang]["revisability"], round(revisability, 2))
     c4.metric(translations[lang]["cognitive_closure"], round(closure, 2))
 
@@ -1183,7 +1203,7 @@ if st.button(translations[lang]["analyze"], use_container_width=True, type="prim
             translations[lang]["number"]: translations[lang]["yes"] if c.has_number else translations[lang]["no"],
             translations[lang]["date"]: translations[lang]["yes"] if c.has_date else translations[lang]["no"],
             translations[lang]["named_entity"]: translations[lang]["yes"] if c.has_named_entity else translations[lang]["no"],
-            translations[lang]["attributed_source"]: translations[lang]["yes"] if c.has_source_cue else translations[lang]["no"]
+            translations[lang]["attributed_source"]: translations[lang]["yes"] if c.has_source_cue else translations[lang]["no"],
         }
         for c in result["claims"]
     ])
@@ -1194,8 +1214,7 @@ if st.button(translations[lang]["analyze"], use_container_width=True, type="prim
         st.info(translations[lang]["paste_longer_text"])
 
     # -----------------------------
-    # Corroboration externe
-    # seulement pour texte collé
+    # Corroboration externe seulement pour texte collé
     # -----------------------------
     if st.session_state.get("article_source") == "paste":
         st.divider()
@@ -1208,21 +1227,41 @@ if st.button(translations[lang]["analyze"], use_container_width=True, type="prim
         if corroboration:
             for i, item in enumerate(corroboration, start=1):
                 title_preview = item["claim"][:140] + ("..." if len(item["claim"]) > 140 else "")
+                verdict = item["verdict"]
+
+                if verdict == "Corroborée":
+                    verdict_display = f"🟢 {translations[lang]['corroborated']}"
+                elif verdict == "Mitigée":
+                    verdict_display = f"🟠 {translations[lang]['mixed']}"
+                elif verdict == "Non corroborée":
+                    verdict_display = f"🔴 {translations[lang]['not_corroborated']}"
+                else:
+                    verdict_display = f"⚪ {translations[lang]['insufficiently_documented']}"
+
                 with st.expander(f"Affirmation {i} : {title_preview}", expanded=(i == 1)):
+                    st.markdown(f"**{translations[lang]['corroboration_verdict']} :** {verdict_display}")
                     st.markdown(f"**{translations[lang]['generated_query']} :** `{item['query']}`")
+
                     if item["matches"]:
                         for match in item["matches"]:
                             st.markdown(f"**[{match['title']}]({match['url']})**")
+                            st.markdown(
+                                f"- **{translations[lang]['match_score']}** : {match['match_score']['score']}\n"
+                                f"- **{translations[lang]['contradiction_signal']}** : "
+                                f"{translations[lang]['detected'] if match['match_score']['contradiction_signal'] else translations[lang]['not_detected']}"
+                            )
                             if match["snippet"]:
                                 st.caption(match["snippet"])
                     else:
                         st.warning(translations[lang]["no_strong_sources_found"])
         else:
             st.info(translations[lang]["no_corroboration_found"])
-
 else:
     st.info(translations[lang]["paste_text_or_load_url"])
 
+# -----------------------------
+# Méthode
+# -----------------------------
 if show_method:
     st.subheader(translations[lang]["method"])
     st.markdown(
@@ -1238,4 +1277,3 @@ if show_method:
         f"- **{translations[lang]['cognitive_closure']}** : `(D * S) / (G + N)`\n\n"
         f"{translations[lang]['disclaimer']}"
     )
- 
