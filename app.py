@@ -6,52 +6,7 @@ from typing import List, Dict
 import pandas as pd
 import streamlit as st
 from streamlit_mic_recorder import speech_to_text
-from openai import OpenAI
-client = OpenAI()
 
-def explain_classification(sentence, classification, scores):
-
-    prompt = f"""
-You are an epistemic analysis assistant.
-
-Sentence:
-{sentence}
-
-Classification:
-{classification}
-
-Signals:
-Verifiability score: {scores['verifiability']}/20
-Source strength score: {scores['source']}/20
-Rhetorical intensity: {scores['rhetoric']}/20
-Normative language detected: {scores['normative']}
-Absolutist language detected: {scores['absolutist']}
-External corroboration found: {scores['corroboration']}
-Conceptual density: {scores['conceptual_density']}
-
-Explain why the sentence received this classification.
-Then propose a stronger formulation.
-
-Format:
-
-Explanation:
-...
-
-Main weaknesses detected:
-- ...
-- ...
-
-Suggested stronger formulation:
-...
-"""
-
-    response = client.chat.completions.create(
-        model="gpt-5-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    return response.choices[0].message.content
 st.set_page_config(
     page_title="Mécroyance Lab — Fact-checking",
     page_icon="🧠",
@@ -210,11 +165,6 @@ translations = {
         "contradiction_signal": "Signal de contradiction",
         "detected": "Détecté",
         "not_detected": "Non détecté",
-        "voice_input": "🎙️ Dictée vocale",
-"voice_help": "Appuyez, parlez, puis arrêtez : la transcription sera ajoutée dans la zone de texte.",
-"voice_start": "🎤 Parler",
-"voice_stop": "⏹️ Stop",
-"voice_added": "Transcription ajoutée au texte.",
     },
     "English": {
         "title": "🧠 Mecroyance Lab — Credibility Analyzer",
@@ -1153,27 +1103,6 @@ if load_url_submitted:
 # -----------------------------
 previous_article = st.session_state.article
 
-st.subheader(translations[lang]["voice_input"])
-st.caption(translations[lang]["voice_help"])
-
-spoken_text = speech_to_text(
-    language="fr",
-    start_prompt=translations[lang]["voice_start"],
-    stop_prompt=translations[lang]["voice_stop"],
-    just_once=True,
-    use_container_width=True,
-    key="speech_to_text_app"
-)
-
-if spoken_text:
-    existing = st.session_state.article.strip()
-    addition = spoken_text.strip()
-
-    if addition:
-        st.session_state.article = f"{existing}\n{addition}".strip() if existing else addition
-        st.session_state.article_source = "paste"
-        st.success(translations[lang]["voice_added"])
-
 with st.form("article_form"):
     article = st.text_area(
         translations[lang]["paste"],
@@ -1291,46 +1220,12 @@ if analyze_submitted:
 
     if not claims_df.empty:
         st.dataframe(claims_df, use_container_width=True, hide_index=True)
-
-        st.markdown("## Explication IA des affirmations")
-        show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
-    if not claims_df.empty:
-        st.dataframe(claims_df, use_container_width=True, hide_index=True)
-
-        show_ai_explanations = st.checkbox("Afficher les explications IA", value=False)
-
-    if show_ai_explanations:
-        st.markdown("## Explication IA des affirmations")
-
-        for i, c in enumerate(result["claims"][:3], start=1):
-            classification = c.status
-
-            scores = {
-                "verifiability": c.verifiability,
-                "source": 20 if c.has_source_cue else 5,
-                "rhetoric": c.risk,
-                "normative": c.absolutism > 0,
-                "absolutist": c.absolutism > 0,
-                "corroboration": False,
-                "conceptual_density": "medium"
-            }
-
-            with st.expander(f"Affirmation {i} — {c.text[:100]}{'...' if len(c.text) > 100 else ''}"):
-                st.write("### Score")
-                st.write(classification)
-
-                explication = explain_classification(
-                    sentence=c.text,
-                    classification=classification,
-                    scores=scores
-                )
-                           st.write("### Pourquoi ce score")
-                st.write("### Pourquoi ce score")
-                st.write(explication)
-
     else:
         st.info(translations[lang]["paste_longer_text"])
 
+    # -----------------------------
+    # Corroboration externe seulement pour texte collé
+    # -----------------------------
     if st.session_state.get("article_source") == "paste":
         st.divider()
         st.subheader(translations[lang]["external_corroboration_module"])
@@ -1374,51 +1269,6 @@ if analyze_submitted:
 else:
     st.info(translations[lang]["paste_text_or_load_url"])
 
-    # -----------------------------
-    # Corroboration externe seulement pour texte collé
-    # -----------------------------
-    if st.session_state.get("article_source") == "paste":
-        st.divider()
-        st.subheader(translations[lang]["external_corroboration_module"])
-        st.caption(translations[lang]["external_corroboration_caption"])
-
-        with st.spinner(translations[lang]["corroboration_in_progress"]):
-            corroboration = corroborate_claims(article, max_claims=5, max_results_per_claim=3)
-
-        if corroboration:
-            for i, c in enumerate(result["claims"][:3], start=1):
-                title_preview = item["claim"][:140] + ("..." if len(item["claim"]) > 140 else "")
-                verdict = item["verdict"]
-
-                if verdict == "Corroborée":
-                    verdict_display = f"🟢 {translations[lang]['corroborated']}"
-                elif verdict == "Mitigée":
-                    verdict_display = f"🟠 {translations[lang]['mixed']}"
-                elif verdict == "Non corroborée":
-                    verdict_display = f"🔴 {translations[lang]['not_corroborated']}"
-                else:
-                    verdict_display = f"⚪ {translations[lang]['insufficiently_documented']}"
-
-                with st.expander(f"Affirmation {i} : {title_preview}", expanded=(i == 1)):
-                    st.markdown(f"**{translations[lang]['corroboration_verdict']} :** {verdict_display}")
-                    st.markdown(f"**{translations[lang]['generated_query']} :** `{item['query']}`")
-
-                    if item["matches"]:
-                        for match in item["matches"]:
-                            st.markdown(f"**[{match['title']}]({match['url']})**")
-                            st.markdown(
-                                f"- **{translations[lang]['match_score']}** : {match['match_score']['score']}\n"
-                                f"- **{translations[lang]['contradiction_signal']}** : "
-                                f"{translations[lang]['detected'] if match['match_score']['contradiction_signal'] else translations[lang]['not_detected']}"
-                            )
-                            if match["snippet"]:
-                                st.caption(match["snippet"])
-                    else:
-                        st.warning(translations[lang]["no_strong_sources_found"])
-        else:
-            st.info(translations[lang]["no_corroboration_found"])
-
-
 # -----------------------------
 # Méthode
 # -----------------------------
@@ -1437,25 +1287,3 @@ if show_method:
         f"- **{translations[lang]['cognitive_closure']}** : `(D * S) / (G + N)`\n\n"
         f"{translations[lang]['disclaimer']}"
     )
-if st.button("Tester l'explication IA"):
-    fake_scores = {
-        "verifiability": 8,
-        "source": 6,
-        "rhetoric": 12,
-        "normative": True,
-        "absolutist": False,
-        "corroboration": False,
-        "conceptual_density": "medium"
-    }
-
-    explication = explain_classification(
-        sentence="Heresy = a conscious contesting error (within a dogma)",
-        classification="Very fragile",
-        scores=fake_scores
-    )
-
-    st.write("### Score")
-    st.write("Very fragile")
-
-    st.write("### Pourquoi ce score")
-    st.write(explication)
