@@ -731,6 +731,18 @@ class Cognition:
         return max(min_val, min(max_val, value))
 
     def compute_mecroyance(self) -> float:
+    
+        discourse = getattr(self, "discourse_type", "").lower()
+    
+        if "fictionnel" in discourse or "mythique" in discourse:
+            return (self.G + self.N) - (self.D * 0.3)
+    
+        if "poétique" in discourse or "littéraire" in discourse:
+            return (self.G + self.N) - (self.D * 0.5)
+    
+        if "religieux" in discourse:
+            return (self.G + self.N) - (self.D * 0.7)
+    
         return (self.G + self.N) - self.D
 
     def interpret(self) -> str:
@@ -9327,6 +9339,80 @@ def detect_rhetorical_structures(text: str):
     scores["fictionnel"] = min(fiction_count * 0.12, 1.0)
     scores["mythique"] = min(mythic_count * 0.12, 1.0)
 
+    # =====================================================
+    # Facteur de discours rapporté / documentaire
+    # =====================================================
+    
+    reported_discourse_factor = (
+        scores.get("reported_speech_score", 0)
+        + scores.get("encyclopedique", 0)
+        + scores.get("definitionnel", 0)
+        + scores.get("journalistique", 0) * 0.5
+    )
+    
+    reported_discourse_factor = min(
+        reported_discourse_factor / 3,
+        1.0
+    )
+    
+    scores["reported_discourse_factor"] = round(
+        reported_discourse_factor,
+        3
+    )
+    # =====================================================
+    # Contrepoids : encyclopédique mais fortement orienté
+    # =====================================================
+    
+    orientation_pressure = (
+        scores.get("attaque", 0)
+        + scores.get("soupcon_systemique", 0)
+        + scores.get("amplification", 0)
+        + scores.get("implicite", 0)
+    )
+    
+    if orientation_pressure > 0.55:
+        reported_discourse_factor *= 0.45
+    elif orientation_pressure > 0.35:
+        reported_discourse_factor *= 0.65
+    
+    reported_discourse_factor = round(reported_discourse_factor, 3)
+    scores["reported_discourse_factor"] = reported_discourse_factor
+
+    # =====================================================
+    # Réduction des faux positifs idéologiques
+    # =====================================================
+    
+    reduction = reported_discourse_factor
+    
+    for key, factor in {
+        "propaganda_score": 0.45,
+        "rhetorical_pressure": 0.35,
+        "conspirationniste": 0.55,
+        "pamphlétaire": 0.50,
+        "saturation_rhetorique": 0.30,
+    }.items():
+    
+        if key in scores:
+            scores[key] *= (1 - reduction * factor)
+            scores[key] = round(scores[key], 3)
+
+    # =====================================================
+    # Réduction structurelle documentaire
+    # =====================================================
+    
+    for key, factor in {
+        "coherence_performative": 0.35,
+        "compression_cognitive": 0.25,
+        "soupcon_systemique": 0.45,
+        "implicite": 0.30,
+        "attaque": 0.25,
+        "amplification": 0.25,
+    }.items():
+    
+        if key in scores:
+            scores[key] *= (1 - reduction * factor)
+            scores[key] = round(scores[key], 3)
+
     return scores
 
 # =============================
@@ -9519,6 +9605,16 @@ def detect_discourse_type_from_rhetoric(text: str, rhetorical_scores: dict):
     
         scores["encyclopedique"] = round(scores.get("encyclopedique", 0) * 1.45, 3)
         scores["definitionnel"] = round(scores.get("definitionnel", 0) * 1.25, 3)
+        
+        scores["encyclopedique"] += rhetorical_scores.get("encyclopedique", 0) * 1.8
+        scores["definitionnel"] += rhetorical_scores.get("definitionnel", 0) * 1.6
+        scores["geopolitique"] += rhetorical_scores.get("geopolitique", 0) * 1.5
+        scores["ecologique"] += rhetorical_scores.get("ecologique", 0) * 1.4
+        scores["social"] += rhetorical_scores.get("social", 0) * 1.4
+        scores["biographique"] += rhetorical_scores.get("biographique", 0) * 1.5
+        scores["fictionnel"] += rhetorical_scores.get("fictionnel", 0) * 1.7
+        scores["mythique"] += rhetorical_scores.get("mythique", 0) * 1.6
+    
 
     sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     
