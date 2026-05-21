@@ -1286,8 +1286,8 @@ def detect_political_patterns(text: str):
 
 def compute_rhetorical_pressure(results: dict) -> float:
     """
-    Calcule une pression rhétorique pondérée entre 0.0 et 1.0
-    à partir des scores rhétoriques modernes et des registres émotionnels.
+    Calcule une pression rhétorique pondérée entre 0.0 et 1.0.
+    Modère la pression lorsque le texte rapporte des propos plutôt qu'il ne les assume.
     """
 
     rhetorical = results.get("rhetorical_scores", {})
@@ -1308,8 +1308,23 @@ def compute_rhetorical_pressure(results: dict) -> float:
         + emotions.get("peur", 0) * 0.04
     )
 
-    return round(min(pressure, 1.0), 3)
+    # -----------------------------
+    # Modération du discours rapporté
+    # -----------------------------
+    reported_speech = max(
+        results.get("reported_speech_score", 0),
+        results.get("reported_speech_ratio", 0),
+        results.get("reported_speech", 0),
+        results.get("reported_speech_gauge", 0),
+    )
 
+    if reported_speech > 0.45:
+        pressure *= 0.65
+    elif reported_speech > 0.25:
+        pressure *= 0.80
+
+    return round(min(max(pressure, 0), 1.0), 3)
+    
 
 def interpret_rhetorical_pressure(value: float):
     """
@@ -1325,32 +1340,6 @@ def interpret_rhetorical_pressure(value: float):
     else:
         return "Très élevée", "#dc2626" # rouge
         
-
-def compute_cognitive_gravity(result):
-    """
-    Gravité cognitive globale du discours.
-    0 = faible
-    1 = maximale
-    """
-
-    lie = min(1, max(0, result.get("lie_gauge", 0)))
-    rhetoric = min(1, max(0, result.get("rhetorical_pressure", 0)))
-    propaganda = min(1, max(0, result.get("propaganda_score", 0) / 10))
-    dissonance = min(1, max(0, result.get("factual_dissonance", 0)))
-    closure = min(1, max(0, result.get("cognitive_closure", 0) / 10))
-
-    hard_fact_inverse = 1 - min(1, max(0, result.get("hard_fact_score", 0) / 20))
-
-    gravity = (
-        lie * 0.25 +
-        rhetoric * 0.20 +
-        propaganda * 0.20 +
-        dissonance * 0.20 +
-        closure * 0.10 +
-        hard_fact_inverse * 0.05
-    )
-
-    return round(min(1, max(0, gravity)), 3)
         
 def compute_propaganda_gauge(
     lie_gauge: float,
@@ -1370,11 +1359,20 @@ def compute_propaganda_gauge(
     amplification: float = 0.0,
     colere: float = 0.0,
     peur: float = 0.0,
+    reported_speech: float = 0.0,
 ):
     """
     Jauge propagandiste structurelle modernisée.
     """
-
+    # Modération émotionnelle si le texte rapporte surtout des propos extérieurs
+    
+    if reported_speech > 0.45:
+        colere *= 0.65
+        peur *= 0.65
+    elif reported_speech > 0.25:
+        colere *= 0.80
+        peur *= 0.80
+        
     ideological_core = (
         false_consensus
         + moral_polarization
@@ -1571,12 +1569,26 @@ def interpret_closure_gauge(value: float):
 def generate_share_block(result):
 
     credibility = result.get("hard_fact_score", 0)
-    gravity = result.get("cognitive_gravity", 0)
 
-    brain = result.get("doxa_brain", {})
-    stability = brain.get("cognitive_stability", 0)
-    regime = brain.get("dominant_regime", "")
-    verdict = brain.get("brain_verdict", "")
+    gravity = result.get(
+        "cognitive_gravity",
+        0
+    )
+
+    stability = result.get(
+        "cognitive_stability",
+        0
+    )
+
+    regime = result.get(
+        "dominant_regime",
+        ""
+    )
+
+    verdict = result.get(
+        "brain_verdict",
+        ""
+    )
 
     # -----------------------------
     # Red flags lisibles
@@ -2670,13 +2682,13 @@ LOGICAL_CONNECTORS = [
 ]
 
 DISCURSIVE_CONTRADICTION_PATTERNS = [
-    r"\btoujours\b.*\bjamais\b",
-    r"\bjamais\b.*\btoujours\b",
-    r"\btout\b.*\bsauf\b",
-    r"\brien\b.*\bmais\b",
-    r"\baucun\b.*\bmais\b",
-    r"\bobligatoire\b.*\bfacultatif\b",
-    r"\bimpossible\b.*\bpossible\b"
+    r"\btoujours\b.{0,120}\bjamais\b",
+    r"\bjamais\b.{0,120}\btoujours\b",
+    r"\btout\b.{0,120}\bsauf\b",
+    r"\brien\b.{0,120}\bmais\b",
+    r"\baucun\b.{0,120}\bmais\b",
+    r"\bobligatoire\b.{0,120}\bfacultatif\b",
+    r"\bimpossible\b.{0,120}\bpossible\b"
 ]
 STOPWORDS_FR_EXTENDED = {
     "le", "la", "les", "un", "une", "des", "du", "de", "d", "et", "ou",
@@ -4432,14 +4444,14 @@ def compute_factual_overinterpretation(text: str):
 # 21) Dissonance interne
 # -----------------------------
 INTERNAL_DISSONANCE_PATTERNS = [
-    r"\bil n'y a pas de preuve\b.*\bc'est certain\b",
-    r"\bon ne sait pas\b.*\bil est évident\b",
-    r"\bjamais\b.*\btoujours\b",
-    r"\btoujours\b.*\bjamais\b",
-    r"\baucun\b.*\btous\b",
-    r"\btous\b.*\baucun\b",
-    r"\bimpossible\b.*\bpossible\b",
-    r"\bpossible\b.*\bimpossible\b",
+    r"\bil n'y a pas de preuve\b.{0,180}\bc'est certain\b",
+    r"\bon ne sait pas\b.{0,180}\bil est évident\b",
+    r"\bjamais\b.{0,120}\btoujours\b",
+    r"\btoujours\b.{0,120}\bjamais\b",
+    r"\baucun\b.{0,120}\btous\b",
+    r"\btous\b.{0,120}\baucun\b",
+    r"\bimpossible\b.{0,120}\bpossible\b",
+    r"\bpossible\b.{0,120}\bimpossible\b",
 ]
 
 NUANCE_DISSONANCE_TERMS = [
@@ -4485,36 +4497,43 @@ def compute_internal_dissonance(text: str):
         }
 
     t = normalize_text_for_markers(text)
-    hits = []
-
+    strong_hits = []
+    tension_hits = []
+    
     for pattern in INTERNAL_DISSONANCE_PATTERNS:
         if re.search(pattern, t, flags=re.DOTALL):
-            hits.append(pattern)
-
+            strong_hits.append(pattern)
+    
     has_nuance = any(term in t for term in NUANCE_DISSONANCE_TERMS)
     has_certainty = any(term in t for term in CERTAINTY_DISSONANCE_TERMS)
     has_threat = any(term in t for term in THREAT_DISSONANCE_TERMS)
-
+    
     if has_nuance and has_certainty:
-        hits.append("tension nuance / certitude absolue")
-
+        tension_hits.append("tension nuance / certitude absolue")
+    
     if has_nuance and has_threat:
-        hits.append("tension prudence / dramatisation de menace")
-
+        tension_hits.append("tension prudence / dramatisation de menace")
+    
     if "sans précédent" in t and ("comme" in t or "similaire" in t):
-        hits.append("tension sans précédent / comparaison historique")
-
+        tension_hits.append("tension sans précédent / comparaison historique")
+    
     if "urgence" in t and ("calme" in t or "calmement" in t):
-        hits.append("tension urgence / calme")
+        tension_hits.append("tension urgence / calme")
+    
+    hits = unique_keep_order(strong_hits + tension_hits)
+    
+    score = min(
+        len(strong_hits) * 0.28 +
+        len(tension_hits) * 0.12,
+        1.0
+    )
 
-    score = min(len(hits) * 0.30, 1.0)
-
-    if score < 0.15:
-        interpretation = "Peu de contradictions internes détectées."
-    elif score < 0.35:
-        interpretation = "Le texte contient quelques tensions internes."
-    elif score < 0.60:
-        interpretation = "Le texte présente plusieurs contradictions ou incohérences."
+    if score < 0.20:
+        interpretation = "Peu de tensions internes détectées."
+    elif score < 0.45:
+        interpretation = "Le discours présente quelques tensions internes."
+    elif score < 0.70:
+        interpretation = "Le discours présente des contradictions ou tensions notables."
     else:
         interpretation = "Le discours est fortement traversé par des contradictions internes."
 
@@ -5077,11 +5096,11 @@ def detect_cherry_picking(text: str):
     all_markers = unique_keep_order(matches + omission_hits + structural_hits)
 
     raw_score = (
-        len(matches) * 0.6 +
-        len(omission_hits) * 0.4 +
-        len(structural_hits) * 1.0
+        len(matches) * 0.25 +
+        len(omission_hits) * 0.35 +
+        len(structural_hits) * 0.35
     )
-
+    
     score = min(raw_score, 1.0)
 
     if score < 0.15:
@@ -6265,25 +6284,16 @@ def detect_aristotelian_fallacies(text: str):
         "argument_from_nature": argument_from_nature,
         "descriptive_normative_confusion": descriptive_normative_confusion,
     }
-
-    return {
-        "descriptive_normative_confusion": descriptive_normative_confusion,
-    }
-
-def compute_brain_indices(result: dict) -> dict:
-    def clamp01(x):
-        return max(0.0, min(1.0, x))
-
-    if isinstance(result, dict):
-        emotional_result = compute_emotional_intensity({
-            "emotional_registers": result.get("emotional_registers", {})
-        })
-    else:
-        emotional_result = {
-            "score": 0.0,
-            "markers": [],
-            "interpretation": "Aucune charge émotionnelle saillante détectée."
-        }
+    
+    gravity = result.get("cognitive_gravity", 0)
+    stability = result.get("cognitive_stability", round(1 - gravity, 3))
+    
+    regime = (
+        result.get("brain_profile")
+        or result.get("dominant_regime")
+        or result.get("cognitive_regime")
+        or "Non déterminé"
+    )
     
     result["emotional_intensity_score"] = emotional_result["score"]
     result["emotional_intensity_markers"] = emotional_result["markers"]
@@ -6360,55 +6370,6 @@ def compute_brain_indices(result: dict) -> dict:
     else:
         profile = "Structure mixte ou ambiguë"
 
-    # -----------------------------
-    # Stabilité / gravité du cerveau DOXA
-    # avec impact modulé du mensonge
-    # -----------------------------
-    cognitive_density = clamp01((G + N) / 20)
-
-    lie_gauge = result.get("lie_gauge", strategic_index)
-    if lie_gauge > 1:
-        lie_gauge = lie_gauge / 100
-
-    lie_impact = lie_gauge * (1 - cognitive_density)
-
-    gravity = clamp01(
-        strategic_index * 0.35 +
-        closure_index * 0.30 +
-        IR * 0.20 +
-        lie_impact * 0.40
-    )
-
-    stability = clamp01(
-        1 -
-        (
-            gravity * 0.60 +
-            closure_index * 0.25 +
-            lie_impact * 0.30
-        )
-    )
-    secondary_pressure = compute_secondary_alert_pressure(result)
-    
-    gravity = min(1.0, gravity + secondary_pressure * 0.45)
-    stability = max(0.0, stability - secondary_pressure * 0.35)
-
-    return {
-        "IR": round(IR, 3),
-        "IL": round(IL, 3),
-        "IC": round(IC, 3),
-        "strategic_index": round(strategic_index, 3),
-        "closure_index": round(closure_index, 3),
-        "lie_impact": round(lie_impact, 3),
-    
-        # anciennes clés si utilisées ailleurs
-        "gravity": round(gravity, 3),
-        "stability": round(stability, 3),
-    
-        "cognitive_gravity": round(gravity, 3),
-        "cognitive_stability": round(stability, 3),
-    
-        "brain_profile": profile,
-    }
       
 def analyze_claim(sentence: str) -> Claim:
     s = sentence.lower()
@@ -6788,19 +6749,198 @@ def compute_secondary_alert_pressure(result: dict) -> float:
 
     return round(min(pressure, 1.0), 3)
 
+def compute_brain_indices(result: dict) -> dict:
+    """
+    Cerveau DOXA v2 — agrégation générale des jauges.
+    Calcule gravité, stabilité et profil dominant.
+    """
+
+    def clamp01(x):
+        return max(0.0, min(1.0, x))
+
+    def g(key, default=0.0):
+        return result.get(key, default) or 0.0
+
+    # -----------------------------
+    # 1) Noyau cognitif
+    # -----------------------------
+    M = g("M")
+    ME = g("ME")
+    hard_fact = g("hard_fact_score", 10)
+
+    fact_fragility = 1 - clamp01(hard_fact / 20)
+    lie_pressure = clamp01(g("lie_gauge", ME / 20))
+
+    closure = clamp01(
+        max(
+            g("cognitive_closure") / 10 if g("cognitive_closure") > 1 else g("cognitive_closure"),
+            g("closure_index")
+        )
+    )
+
+    core_pressure = clamp01(
+        fact_fragility * 0.35 +
+        lie_pressure * 0.35 +
+        closure * 0.30
+    )
+
+    # -----------------------------
+    # 2) Pression discursive
+    # -----------------------------
+    propaganda = g("propaganda_score")
+    if propaganda > 1:
+        propaganda = propaganda / 10
+    
+    certainty = g("strong_certainty_score")
+    if certainty > 1:
+        certainty = certainty / 100
+    
+    narrative_propaganda = g("narrative_propaganda_score")
+    if narrative_propaganda > 1:
+        narrative_propaganda = narrative_propaganda / 100
+    
+    discursive_pressure = clamp01(
+        g("rhetorical_pressure") * 0.30 +
+        propaganda * 0.25 +
+        g("emotional_intensity_score") * 0.15 +
+        certainty * 0.15 +
+        narrative_propaganda * 0.15
+    )
+
+    # -----------------------------
+    # 3) Raisonnement / logique
+    # -----------------------------
+    reasoning_pressure = clamp01(
+        g("internal_dissonance_score") * 0.15 +
+        g("misleading_coherence_score") * 0.20 +
+        g("advanced_misleading_coherence_score") * 0.15 +
+        g("logic_confusion_score") * 0.12 +
+        g("causal_overreach_score") * 0.12 +
+        g("false_analogy_score") * 0.12 +
+        g("logical_jump_score") * 0.07 +
+        g("cherry_picking_score") * 0.07
+    )
+
+    # -----------------------------
+    # 4) Idéologie / cadrage
+    # -----------------------------
+    ideological_pressure = clamp01(
+        g("premise_score") * 0.15 +
+        g("ideological_premise_score") * 0.12 +
+        g("semantic_shift_score") * 0.12 +
+        g("false_consensus_score") * 0.10 +
+        g("false_consensus_strong_score") * 0.10 +
+        g("binary_opposition_score") * 0.10 +
+        g("moral_polarization_score") * 0.08 +
+        g("victimization_score") * 0.06 +
+        g("narrative_overdetermination_score") * 0.07 +
+        g("normative_qualification_score") * 0.10 +
+        g("scientificity_rhetoric_score") * 0.10
+    )
+
+    # -----------------------------
+    # 5) Réalité / statistiques
+    # -----------------------------
+    real_anchor_score = g("real_anchor_score", 10)
+    weak_anchor = 1 - clamp01(real_anchor_score / 20)
+
+    reality_pressure = clamp01(
+        weak_anchor * 0.40 +
+        g("statistical_manipulation_score") * 0.25 +
+        g("misleading_comparison_score") * 0.15 +
+        g("missing_reference_score") * 0.10 +
+        g("data_without_reference_score") * 0.10
+    )
+
+    # -----------------------------
+    # 6) Bonus compensateur
+    # -----------------------------
+    bonus = clamp01(g("cognitive_bonus"))
+
+    # -----------------------------
+    # Gravité finale
+    # -----------------------------
+    gravity = clamp01(
+        core_pressure * 0.28 +
+        discursive_pressure * 0.22 +
+        reasoning_pressure * 0.20 +
+        ideological_pressure * 0.18 +
+        reality_pressure * 0.12
+        - bonus * 0.12
+    )
+
+    stability = clamp01(1 - gravity)
+
+    # -----------------------------
+    # Profil dominant
+    # -----------------------------
+    pressures = {
+        "Pression cognitive": core_pressure,
+        "Pression discursive": discursive_pressure,
+        "Fragilité logique": reasoning_pressure,
+        "Cadrage idéologique": ideological_pressure,
+        "Faible ancrage réel": reality_pressure,
+    }
+
+    dominant_family = max(pressures, key=pressures.get)
+
+    if gravity < 0.20:
+        profile = "Discours équilibré"
+    elif dominant_family == "Pression discursive" and discursive_pressure > 0.45:
+        profile = "Manipulation rhétorique"
+    elif dominant_family == "Fragilité logique" and reasoning_pressure > 0.45:
+        profile = "Raisonnement instable"
+    elif dominant_family == "Cadrage idéologique" and ideological_pressure > 0.45:
+        profile = "Cadrage idéologique dominant"
+    elif dominant_family == "Faible ancrage réel" and reality_pressure > 0.45:
+        profile = "Cohérence autoporteuse fragile"
+    elif ME > M:
+        profile = "Mensonge stratégique possible"
+    elif M >= ME:
+        profile = "Mécroyance dominante"
+    else:
+        profile = "Structure mixte ou ambiguë"
+
+    return {
+        "core_pressure": round(core_pressure, 3),
+        "discursive_pressure_brain": round(discursive_pressure, 3),
+        "reasoning_pressure_brain": round(reasoning_pressure, 3),
+        "ideological_pressure_brain": round(ideological_pressure, 3),
+        "reality_pressure_brain": round(reality_pressure, 3),
+        "brain_dominant_family": dominant_family,
+
+        "gravity": round(gravity, 3),
+        "stability": round(stability, 3),
+        "cognitive_gravity": round(gravity, 3),
+        "cognitive_stability": round(stability, 3),
+
+        "brain_profile": profile,
+        "dominant_regime": profile,
+    }
+
 def compute_doxa_brain(result: dict) -> dict:
     """
     Synthèse finale du cerveau DOXA.
-    Agrège la gravité, la stabilité et le régime cognitif.
+    Habillage final des indices déjà calculés.
     """
-
-    gravity = result.get("cognitive_gravity", 0)
-    stability = round(1 - gravity, 3)
+    
+    gravity = result.get("cognitive_gravity", result.get("gravity", 0))
+    gravity = max(0, min(gravity, 1))
+    
+    stability = result.get(
+        "cognitive_stability",
+        result.get("stability", 1 - gravity)
+    )
+    stability = max(0, min(stability, 1))
 
     M = result.get("M", 0)
     ME = result.get("ME", 0)
     hard_fact = result.get("hard_fact_score", 0)
-    regime = result.get("cognitive_regime", "Non classé")
+
+    regime = result.get(
+        "dominant_regime",
+        "Non déterminé"
+    )
 
     if gravity < 0.20:
         brain_state = "Stable"
@@ -6827,15 +6967,51 @@ def compute_doxa_brain(result: dict) -> dict:
         "brain_state": brain_state,
         "brain_verdict": verdict,
         "brain_advice": advice,
-        "cognitive_stability": stability,
+    
+        # conserver les valeurs déjà calculées
+        "gravity": round(gravity, 3),
+        "stability": round(stability, 3),
+    
+        "cognitive_gravity": round(gravity, 3),
+        "cognitive_stability": round(stability, 3),
+    
         "dominant_regime": regime,
-        "brain_summary": (
-            f"État : {brain_state} | "
-            f"Stabilité : {stability:.2f} | "
-            f"Gravité : {gravity:.2f} | "
-            f"Régime dominant : {regime} | "
-            f"M={M:.2f}, ME={ME:.2f}, Factuel={hard_fact:.1f}/20"
-        )
+    
+        # préserver familles DOXA
+        "core_pressure":
+            result.get("core_pressure", 0),
+    
+        "discursive_pressure_brain":
+            result.get(
+                "discursive_pressure_brain",
+                0
+            ),
+    
+        "reasoning_pressure_brain":
+            result.get(
+                "reasoning_pressure_brain",
+                0
+            ),
+    
+        "ideological_pressure_brain":
+            result.get(
+                "ideological_pressure_brain",
+                0
+            ),
+    
+        "reality_pressure_brain":
+            result.get(
+                "reality_pressure_brain",
+                0
+            ),
+    
+        "brain_dominant_family":
+            result.get(
+                "brain_dominant_family",
+                "Non déterminée"
+            ),
+    
+        "brain_summary": None
     }
 
 def compute_mecroyance_penalties(result: dict) -> dict:
@@ -7773,7 +7949,296 @@ def compute_reported_speech_ratio(text: str) -> dict:
         "interpretation": interpretation
     }
 
+# =============================
+# Ancrage au réel
+# =============================
+
+REAL_ANCHOR_EMPIRY = [
+    "expérience", "expérimentation", "mesure", "mesuré", "observation",
+    "observé", "test", "testé", "données", "protocole", "benchmark",
+    "résultat", "validation", "validé", "détecté", "reproduit",
+    "statistiquement significatif", "échantillon", "essai clinique",
+    "simulation validée", "étude", "rapport", "chiffres", "pourcentage",
+    "%", "selon", "économistes", "expert", "secteurs", "postes", "créés", 
+    "emplois", "finance", "santé"
+]
+
+REAL_ANCHOR_REPRODUCIBILITY = [
+    "méthode", "paramètres", "reproductible", "reproductibilité",
+    "réplication", "répliqué", "protocole détaillé", "dataset",
+    "jeu de données", "open source", "code source", "doi", "arxiv",
+    "publication", "revue par les pairs", "littérature scientifique"
+]
+
+REAL_ANCHOR_FALSIFIABILITY = [
+    "hypothèse", "modèle partiel", "approximation", "sous certaines conditions",
+    "pourrait être faux", "pourrait être réfuté", "compatible avec",
+    "marge d’erreur", "marge d'erreur", "résultats préliminaires",
+    "selon les données actuelles", "limite du modèle", "pourraient", "pourrait", 
+    "certains", "restent prudents", "il faut nuancer", "nuancer", "cependant"
+]
+
+REAL_ANCHOR_LIMITS = [
+    "nous ne savons pas", "reste incomplet", "interprétation débattue",
+    "hypothèse de travail", "limite actuelle", "nécessite validation",
+    "nécessite davantage de recherches", "cadre spécifique",
+    "dans cette classe de systèmes", "conditions de validité",
+    "limites de cette approche"
+]
+
+SPECULATIVE_INFLATION_MARKERS = [
+    "explique tout", "théorie du tout", "théorie unifiée",
+    "structure cachée", "structure fondamentale du réel",
+    "clé fondamentale", "clé de l’univers", "tout découle de",
+    "aucune exception", "preuve finale", "preuve définitive",
+    "révolution complète", "erreur historique majeure",
+    "la vraie structure", "enfin expliqué", "peut enfin être expliqué",
+    "description complète", "sans nouveaux paramètres",
+    "tous les systèmes", "chaque système", "toujours", "jamais",
+    "inévitablement", "nécessairement", "va remplacer", 
+    "il est absolument certain", "crise sociale majeure", 
+    "si rien n'est fait immédiatement", "révolution sans précédent", 
+    "étude choc"
+]
+
+
+def count_real_anchor_markers(text, markers):
+    t = text.lower()
+    found = []
+
+    for marker in markers:
+        if marker.lower() in t:
+            found.append(marker)
+
+    return found
+
+
+def normalize_component(count, divisor=4):
+    """
+    Transforme un nombre de marqueurs en score 0–5.
+    """
+    return min(5.0, count / divisor * 5)
+
+
+def detect_real_anchor(text, result=None):
+    """
+    Mesure l'ancrage au réel d'un discours.
+
+    A = (E + R + F + L) - S
+    E = empirie
+    R = reproductibilité
+    F = falsifiabilité
+    L = limites explicites
+    S = spéculation extrapolative
+
+    Score final normalisé sur 20.
+    """
+
+    empirical_markers = count_real_anchor_markers(text, REAL_ANCHOR_EMPIRY)
+    reproducibility_markers = count_real_anchor_markers(text, REAL_ANCHOR_REPRODUCIBILITY)
+    falsifiability_markers = count_real_anchor_markers(text, REAL_ANCHOR_FALSIFIABILITY)
+    limits_markers = count_real_anchor_markers(text, REAL_ANCHOR_LIMITS)
+    speculation_markers = count_real_anchor_markers(text, SPECULATIVE_INFLATION_MARKERS)
+
+    E = normalize_component(len(empirical_markers), divisor=5)
+    R = normalize_component(len(reproducibility_markers), divisor=4)
+    F = normalize_component(len(falsifiability_markers), divisor=3)
+    L = normalize_component(len(limits_markers), divisor=3)
+    S = normalize_component(len(speculation_markers), divisor=4)
+
+    # Bonus prudent si le texte contient des références académiques explicites
+    academic_bonus = 0
+
+    t = text.lower()
+    if "doi" in t or "arxiv" in t or "revue par les pairs" in t:
+        academic_bonus += 1.0
+
+    if "protocole" in t and ("données" in t or "dataset" in t):
+        academic_bonus += 0.8
+
+    if "limite" in t or "hypothèse" in t:
+        academic_bonus += 0.5
+
+    raw_score = (E + R + F + L + academic_bonus) - S
+
+    # Normalisation sur 20
+    anchor_score = max(0, min(20, raw_score / 21 * 20))
+
+    if anchor_score < 5:
+        label = "Très faible"
+        interpretation = (
+            "Le discours est faiblement contraint par le réel : peu d’expérience, "
+            "peu de reproductibilité ou forte extrapolation spéculative."
+        )
+    elif anchor_score < 10:
+        label = "Fragile"
+        interpretation = (
+            "Le discours contient quelques appuis réels, mais ils restent insuffisants "
+            "face à la portée des affirmations."
+        )
+    elif anchor_score < 15:
+        label = "Modéré"
+        interpretation = (
+            "Le discours présente un ancrage partiel : certains éléments sont vérifiables, "
+            "mais la démonstration reste incomplète."
+        )
+    elif anchor_score < 18:
+        label = "Fort"
+        interpretation = (
+            "Le discours est fortement relié à des éléments empiriques, méthodologiques "
+            "ou reproductibles."
+        )
+    else:
+        label = "Très fort"
+        interpretation = (
+            "Le discours paraît fortement contraint par le réel : données, méthode, "
+            "révisabilité et reproductibilité sont bien représentées."
+        )
+
+    # Couplage avec M et spéculation si result existe
+    M = 0
+    if result:
+        M = result.get("M", 0)
+
+    delta_reality = round((M + S) - anchor_score, 2)
+
+    if delta_reality <= -5:
+        delta_label = "Structure fortement ancrée"
+        delta_interpretation = (
+            "L’ancrage au réel domine nettement la spéculation et la mécroyance."
+        )
+    elif delta_reality <= 2:
+        delta_label = "Zone révisable"
+        delta_interpretation = (
+            "Le discours conserve un équilibre entre cohérence, spéculation et contrainte du réel."
+        )
+    else:
+        delta_label = "Cohérence autoporteuse possible"
+        delta_interpretation = (
+            "La cohérence ou la spéculation semblent dépasser l’ancrage empirique disponible."
+        )
+
+    return {
+        "real_anchor_score": round(anchor_score, 2),
+        "real_anchor_label": label,
+        "real_anchor_interpretation": interpretation,
+
+        "real_anchor_E": round(E, 2),
+        "real_anchor_R": round(R, 2),
+        "real_anchor_F": round(F, 2),
+        "real_anchor_L": round(L, 2),
+        "real_anchor_S": round(S, 2),
+
+        "real_anchor_empirical_markers": empirical_markers,
+        "real_anchor_reproducibility_markers": reproducibility_markers,
+        "real_anchor_falsifiability_markers": falsifiability_markers,
+        "real_anchor_limits_markers": limits_markers,
+        "real_anchor_speculation_markers": speculation_markers,
+
+        "delta_reality": delta_reality,
+        "delta_reality_label": delta_label,
+        "delta_reality_interpretation": delta_interpretation,
+    }
+
+def compute_cognitive_bonus(result: dict):
+    """
+    Module bonus :
+    compense partiellement les pénalités
+    lorsqu'un texte reste ouvert,
+    cohérent et ancré au réel.
+    """
+
+    def clamp01(x):
+        return max(0.0, min(1.0, x))
+
+    # -----------------------------
+    # 1) Ancrage au réel
+    # -----------------------------
+    anchor = result.get("real_anchor_score", 10) / 20
+
+    # -----------------------------
+    # 2) Révisabilité
+    # -----------------------------
+    nuance = min(
+        len(result.get("nuance_markers", [])) / 10,
+        1.0
+    )
+
+    uncertainty = min(
+        len(result.get("uncertainty_markers", [])) / 10,
+        1.0
+    )
+
+    counter = min(
+        len(result.get("counter_argument_markers", [])) / 8,
+        1.0
+    )
+
+    closure = result.get("closure_index", 0)
+
+    revisability = clamp01(
+        (
+            nuance * 0.35 +
+            uncertainty * 0.25 +
+            counter * 0.25
+        )
+        -
+        closure * 0.25
+    )
+
+    # -----------------------------
+    # 3) Cohérence discursive
+    # -----------------------------
+    coherence = clamp01(
+        (
+            result.get("argument_density_score", 0) * 0.35
+            +
+            (
+                1 -
+                result.get(
+                    "internal_dissonance_score",
+                    0
+                )
+            ) * 0.35
+            +
+            (
+                result.get(
+                    "reasoning_score",
+                    result.get(
+                        "hard_fact_score",
+                        10
+                    ) / 20
+                )
+            ) * 0.30
+        )
+    )
+
+    # -----------------------------
+    # Bonus final
+    # -----------------------------
+    bonus = clamp01(
+        anchor * 0.45
+        +
+        revisability * 0.30
+        +
+        coherence * 0.25
+    )
+
+    return {
+        "bonus_anchor": round(anchor, 3),
+        "bonus_revisability": round(revisability, 3),
+        "bonus_coherence": round(coherence, 3),
+
+        "cognitive_bonus": round(bonus, 3),
+
+        "bonus_interpretation":
+            "Compensation par ancrage réel, révisabilité et cohérence."
+    }
+
+
+
 def analyze_article(text: str) -> Dict:
+    article = text
     words = text.split()
     sentences = [s.strip() for s in re.split(r"[.!?]+", text) if len(s.strip()) > 10]
     article_length = len(words)
@@ -8128,55 +8593,6 @@ def analyze_article(text: str) -> Dict:
 
     claims = [analyze_claim(sentence) for sentence in sentences[:15]]
 
-    # -----------------------------
-    # Calcul du cerveau global
-    # -----------------------------
-    brain = compute_brain_indices({
-        "text": text,
-        "G": G,
-        "N": N,
-        "D": D,
-        "M": M,
-        "ME": ME,
-        "normative_score": normative_analysis["score"],
-        "propaganda_score": propaganda_analysis["score"],
-        "emotional_intensity_score": emotional_intensity_analysis["score"],
-        "certainty_score": certainty_analysis[0],
-        "false_consensus_score": false_consensus_analysis[0],
-        "binary_opposition_score": binary_opposition_analysis[0],
-        "threat_amplification_score": threat_amplification_analysis[0],
-        "vague_authority_score": vague_authority_analysis["score"],
-        "logic_confusion_score": logic_confusion_analysis["score"],
-        "causal_overreach_score": causal_overreach_analysis["score"],
-        "factual_overinterpretation_score": factual_overinterpretation_analysis["score"],
-        "false_analogy_score": false_analogy_analysis["score"],
-        "internal_dissonance_score": internal_dissonance_analysis["score"],
-        "aristotelian_fallacies_score": aristotelian_fallacies["score"],
-        "petition_score": aristotelian_fallacies["petition"]["score"],
-        "petition_markers": aristotelian_fallacies["petition"]["matches"],
-        "petition_interpretation": aristotelian_fallacies["petition"]["interpretation"],
-        "false_causality_basic_score": aristotelian_fallacies["false_causality"]["score"],
-        "false_causality_basic_markers": aristotelian_fallacies["false_causality"]["matches"],
-        "false_causality_basic_interpretation": aristotelian_fallacies["false_causality"]["interpretation"],
-        "hasty_generalization_score": aristotelian_fallacies["generalization"]["score"],
-        "hasty_generalization_markers": aristotelian_fallacies["generalization"]["matches"],
-        "hasty_generalization_interpretation": aristotelian_fallacies["generalization"]["interpretation"],
-        "vague_authority_basic_score": aristotelian_fallacies["vague_authority"]["score"],
-        "vague_authority_basic_markers": aristotelian_fallacies["vague_authority"]["matches"],
-        "vague_authority_basic_interpretation": aristotelian_fallacies["vague_authority"]["interpretation"],
-        "false_dilemma_score": aristotelian_fallacies["false_dilemma"]["score"],
-        "false_dilemma_markers": aristotelian_fallacies["false_dilemma"]["matches"],
-        "false_dilemma_interpretation": aristotelian_fallacies["false_dilemma"]["interpretation"],
-        "scientific_simulation_score": scientific_simulation_analysis["score"],
-        "premise_score": premise_analysis["score"],
-        "ideological_premise_score": ideological_premise_analysis["score"],
-        "semantic_shift_score": semantic_shift_analysis["score"],
-        "doxic_rigidity_score": doxic_rigidity_analysis["score"],
-        "narrative_overdetermination_score": narrative_overdetermination_analysis["score"],
-        "argument_asymmetry_score": argument_asymmetry_analysis["score"],
-        "coherence_trompeuse_score": 0,
-        "dissonance_score": internal_dissonance_analysis["score"],
-    })
     # -----------------------------
     # Score analogique du raisonnement
     # -----------------------------
@@ -8559,12 +8975,32 @@ def analyze_article(text: str) -> Dict:
     if result.get("argument_attack_count", 0) == 0:
         result["argument_asymmetry_score"] = 0.0
         result["argument_asymmetry_interpretation"] = "Aucune rhétorique d’attaque dominante détectée."
+
+    # -----------------------------
+    # Cherry Picking
+    # -----------------------------
+    cherry_picking = detect_cherry_picking(article)
+    
+    result["cherry_picking_score"] = cherry_picking["score"]
+    result["cherry_picking_markers"] = cherry_picking["markers"]
+    result["cherry_picking_matches"] = cherry_picking["matches"]
+    result["cherry_picking_omission_markers"] = cherry_picking["omission_markers"]
+    result["cherry_picking_structural_markers"] = cherry_picking["structural_markers"]
+    result["cherry_picking_interpretation"] = cherry_picking["interpretation"]
     
     # Modulation contextuelle selon le type de discours
     result = apply_discourse_modifiers(result)
     
-    result["brain"] = brain
     result = classify_cognitive_regime(result)
+    
+    bonus = compute_cognitive_bonus(result)
+    result.update(bonus)
+
+    # brain_indices = compute_brain_indices(result)
+    # result.update(brain_indices)
+    
+    result["doxa_brain"] = compute_doxa_brain(result)
+    result.update(result["doxa_brain"])
 
     # -----------------------------
     # Modérateur discours rapporté / citations
@@ -8638,9 +9074,30 @@ def analyze_article(text: str) -> Dict:
     else:
         result["final_credibility_note"] = ""
 
-    result["cognitive_gravity"] = compute_cognitive_gravity(result)
+    # -----------------------------
+    # Ancrage au réel
+    # -----------------------------
+    
+    real_anchor = detect_real_anchor(text, result)
+    result.update(real_anchor)
+    
+    # -----------------------------
+    # Bonus cognitif
+    # -----------------------------
+    
+    bonus = compute_cognitive_bonus(result)
+    result.update(bonus)
+    
+    # -----------------------------
+    # Cerveau DOXA FINAL
+    # -----------------------------
+    
+    brain = compute_brain_indices(result)
+    result.update(brain)
+    
     result["doxa_brain"] = compute_doxa_brain(result)
-
+    result.update(result["doxa_brain"])
+    
     return result
 
 # -----------------------------
@@ -8892,22 +9349,30 @@ def analyze_multiple_articles(keyword: str, max_results: int = 10) -> List[Dict]
     for art in articles:
         try:
             full_text = extract_article_from_url(art["url"])
-            if len(full_text) > 120:
-                analysis = analyze_article(full_text)
-                results.append(
-                    {
-                        "Source": art["source"],
-                        "Titre": art["title"],
-                        "Score classique": analysis["M"],
-                        "Hard Fact Score": analysis["hard_fact_score"],
-                        "Verdict": analysis["verdict"],
-                        "URL": art["url"],
-                    }
-                )
-        except Exception:
+
+            if not full_text or len(full_text.strip()) <= 120:
+                continue
+
+            analysis = analyze_article(full_text)
+
+            results.append(
+                {
+                    "Source": art["source"],
+                    "Titre": art["title"],
+                    "Score classique": analysis["M"],
+                    "Hard Fact Score": analysis["hard_fact_score"],
+                    "Verdict": analysis["verdict"],
+                    "URL": art["url"],
+                }
+            )
+
+        except Exception as e:
+            import traceback
+            st.warning(f"Article ignoré : {type(e).__name__} — {e}")
+            st.code(traceback.format_exc())
             continue
 
-    return results   
+    return results 
     
 @st.cache_data(show_spinner=False, ttl=1800)
 def fetch_text_for_textarea(url: str) -> str:
@@ -9294,6 +9759,54 @@ def detect_rhetorical_structures(text: str):
     scores["compression_cognitive"] = compute_cognitive_compression(text)
     scores["saturation_rhetorique"] = compute_rhetorical_saturation(text)
     scores["dissimulation_attenuation"] = compute_dissimulation_attenuation(text)
+
+    # =============================
+    # Amplification structurelle
+    # =============================
+    
+    compression = scores.get("compression_cognitive", 0)
+    
+    if compression > 0.45:
+    
+        # -----------------------------
+        # Abstraction
+        # -----------------------------
+        scores["abstraction"] = min(
+            1.0,
+            scores.get("abstraction", 0) + compression * 0.35
+        )
+    
+        # -----------------------------
+        # Technicité
+        # -----------------------------
+        scores["technicite"] = min(
+            1.0,
+            scores.get("technicite", 0) + compression * 0.45
+        )
+    
+        # -----------------------------
+        # Cohérence performative
+        # -----------------------------
+        scores["coherence_performative"] = min(
+            1.0,
+            scores.get("coherence_performative", 0) + compression * 0.30
+        )
+    
+        # -----------------------------
+        # Scientificité rhétorique
+        # -----------------------------
+        scores["scientificite_rhetorique"] = min(
+            1.0,
+            scores.get("scientificite_rhetorique", 0) + compression * 0.40
+        )
+    
+        # -----------------------------
+        # Saturation rhétorique légère
+        # -----------------------------
+        scores["saturation_rhetorique"] = min(
+            1.0,
+            scores.get("saturation_rhetorique", 0) + compression * 0.12
+        )
     
     # =========================================================
     # Comptage des nouveaux régimes discursifs
@@ -10611,7 +11124,6 @@ if analyze_submitted:
     if len(semantic_words) < 3:
         st.session_state.last_result = None
         st.session_state.last_article = article
-        st.session_state["auto_scroll_to_analysis"] = False
 
         st.warning("⚠️ Analyse impossible")
         st.caption("Le texte est trop court pour permettre une analyse fiable.")
@@ -10654,35 +11166,12 @@ if analyze_submitted:
     st.session_state.last_result = analyze_article(article)
     st.session_state.last_article = article
 
-result = st.session_state.last_result
-article_for_analysis = st.session_state.last_article
+result = st.session_state.get("last_result")
+article_for_analysis = st.session_state.get("last_article", "")
 
 if not result:
     st.stop()
 
-import streamlit.components.v1 as components
-
-if st.session_state.get("auto_scroll_to_analysis", False):
-    components.html(
-        """
-        <script>
-        setTimeout(() => {
-            const target = window.parent.document.getElementById("scroll-analyse-target");
-            if (target) {
-                target.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-            }
-        }, 800);
-        </script>
-        """,
-        height=0
-    )
-
-    st.session_state["auto_scroll_to_analysis"] = False
-
-if result:
 # =====================================================
 # AIDE DE LECTURE DES JAUGES
 # =====================================================
@@ -11006,12 +11495,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <div id="scroll-analyse-target"></div>
-    """,
-    unsafe_allow_html=True
-)
 
 st.markdown("### Type de discours détecté")
 
@@ -11470,6 +11953,7 @@ st.markdown("""
 # Barre de crédibilité finale
 # =============================
 final_score = result.get("final_credibility_score", score)
+final_score = max(0, min(final_score, 20))
 
 if final_score < 6:
     couleur_c = "🔴"
@@ -11516,7 +12000,7 @@ st.markdown(f"""
         border:1px solid #cbd5e1;
     ">
         <div style="
-            width:{min(final_score / 20, 1) * 100}%;
+            width:{max(min(final_score / 20, 1) * 100, 3)}%;
             height:100%;
             background:{color_c};
             transition:width 0.4s ease;
@@ -11679,12 +12163,18 @@ background:linear-gradient(135deg, rgba(15,23,42,0.06), rgba(30,41,59,0.03));
 )
 
 # Variables principales
-stability = brain.get("cognitive_stability", 0)
-gravity = brain.get("cognitive_gravity", 1 - stability)
+stability = result.get("cognitive_stability", 0)
+gravity = result.get("cognitive_gravity", 1 - stability)
 
-dominant_regime = brain.get("dominant_regime", "Non déterminé")
-brain_summary = brain.get("brain_summary", "Aucun résumé disponible.")
-brain_advice = brain.get("brain_advice", "")
+dominant_regime = result.get(
+    "dominant_regime",
+    "Non déterminé"
+)
+
+brain_advice = result.get(
+    "brain_advice",
+    ""
+)
 
 # ✅ Correction dynamique avec jauges secondaires
 secondary_pressure = compute_secondary_alert_pressure(result)
@@ -11854,9 +12344,19 @@ Dans cette analyse :
 
 ---
 
+brain_summary = (
+    f"État : {result.get('brain_state', 'Non déterminé')} | "
+    f"Stabilité : {result.get('cognitive_stability', 0):.2f} | "
+    f"Gravité : {result.get('cognitive_gravity', 0):.2f} | "
+    f"Régime dominant : {result.get('dominant_regime', 'Non déterminé')} | "
+    f"M={result.get('M', 0):.2f}, "
+    f"ME={result.get('ME', 0):.2f}, "
+    f"Factuel={result.get('hard_fact_score', 0):.1f}/20"
+)
+
 ### Lecture globale
 
-{brain_summary}
+{result.get("brain_summary", "")}
 
 Même si la stabilité est élevée, le régime dominant peut signaler une fragilité particulière, comme du **pseudo-savoir**, une **mécroyance probable** ou une **orientation rhétorique**.
 """)
@@ -11868,6 +12368,11 @@ Même si la stabilité est élevée, le régime dominant peut signaler une fragi
 # 👉 utiliser la gravité corrigée déjà calculée
 # NE PAS relire result ici
 # gravity est déjà modifiée plus haut
+# Synchronisation finale cerveau DOXA
+result["cognitive_gravity"] = gravity
+result["cognitive_stability"] = stability
+result["gravity"] = gravity
+result["stability"] = stability
 gravity_pct = round(gravity * 100, 1)
 
 if gravity < 0.2:
@@ -11959,32 +12464,40 @@ La jauge combine plusieurs indicateurs détectés dans le texte :
 
 Ces signaux sont agrégés pour produire un **diagnostic global de santé cognitive du discours**.
 
-### Formule heuristique
+### Formule heuristique actuelle
 
-La gravité cognitive est calculée à partir de plusieurs composantes combinées :
+La gravité cognitive est calculée par familles de pression :
 
-- indice stratégique (tension entre mécroyance et mensonge)
-- fermeture cognitive (déséquilibre entre G, N et D)
-- pression discursive (rhétorique, émotion, simplification)
-- impact du mensonge potentiel
-- pression secondaire (accumulation des jauges activées)
+- noyau cognitif : M, ME, Hard Fact, clôture
+- pression discursive : rhétorique, propagande, émotion, certitude
+- fragilité logique : dissonance, cohérence trompeuse, fausses causalités, analogies
+- cadrage idéologique : prémisses, consensus, opposition binaire, glissements sémantiques
+- ancrage réel fragile : faiblesse de l’ancrage au réel, statistiques, référentiels manquants
 
 Formule simplifiée :
 
 gravité =
-    (indice stratégique × 0.35)
-  + (fermeture cognitive × 0.30)
-  + (pression discursive × 0.20)
-  + (impact du mensonge × 0.40)
-
-Puis ajustement :
-
-gravité = gravité + (pression secondaire × 0.45)
+    (noyau_cognitif × 0.28)
+  + (pression_discursive × 0.22)
+  + (fragilité_logique × 0.20)
+  + (cadrage_idéologique × 0.18)
+  + (ancrage_réel_fragile × 0.12)
+  − (bonus_cognitif × 0.12)
 
 Le score final est borné entre 0 et 1.
 
+#### Valeurs de cette analyse
+
+- Noyau cognitif : {round(result.get("core_pressure",0)*100,1)}%
+- Pression discursive : {round(result.get("discursive_pressure_brain",0)*100,1)}%
+- Fragilité logique : {round(result.get("reasoning_pressure_brain",0)*100,1)}%
+- Cadrage idéologique : {round(result.get("ideological_pressure_brain",0)*100,1)}%
+- Ancrage réel fragile : {round(result.get("reality_pressure_brain",0)*100,1)}%
+- Bonus cognitif : {round(result.get("cognitive_bonus",0)*100,1)}%
+
 #### Interprétation
-0 → discours sain
+
+0 → discours cognitivement stable  
 1 → dérive cognitive maximale
 """)
 
@@ -12098,9 +12611,66 @@ Une vitalité cognitive de **{life_score}%** indique une vitalité **{life_label
 
 {life_text}
 """)
+
+# =============================
+# Familles de pression DOXA
+# =============================
+
+st.markdown("### 🧠 Familles de pression DOXA")
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric(
+    "Noyau cognitif",
+    f"{round(result.get('core_pressure',0)*100,1)}%"
+)
+
+c2.metric(
+    "Pression discursive",
+    f"{round(result.get('discursive_pressure_brain',0)*100,1)}%"
+)
+
+c3.metric(
+    "Fragilité logique",
+    f"{round(result.get('reasoning_pressure_brain',0)*100,1)}%"
+)
+
+c4, c5, c6 = st.columns(3)
+
+c4.metric(
+    "Cadrage idéologique",
+    f"{round(result.get('ideological_pressure_brain',0)*100,1)}%"
+)
+
+c5.metric(
+    "Ancrage réel fragile",
+    f"{round(result.get('reality_pressure_brain',0)*100,1)}%"
+)
+
+c6.metric(
+    "Famille dominante",
+    result.get(
+        "brain_dominant_family",
+        "Non déterminée"
+    )
+)
+
+st.caption(
+    "Le cerveau DOXA agrège les grandes familles de pression qui influencent le diagnostic global."
+)
+
+st.divider()
     
 with st.expander("📊 Résumé détaillé du cerveau DOXA"):
-    st.write(brain_summary)
+    st.write(
+    f"État : {result.get('brain_state', 'Non déterminé')} | "
+    f"Stabilité : {result.get('cognitive_stability', 0):.2f} | "
+    f"Gravité : {result.get('cognitive_gravity', 0):.2f} | "
+    f"Régime dominant : {result.get('dominant_regime', 'Non déterminé')} | "
+    f"M={result.get('M', 0):.2f}, "
+    f"ME={result.get('ME', 0):.2f}, "
+    f"Factuel={result.get('hard_fact_score', 0):.1f}/20"
+)
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -12617,17 +13187,19 @@ with pd1:
         
         st.code(
             "pression = (\n"
-            " amplification × 0.18\n"
-            "+ saturation_rhetorique × 0.22\n"
-            "+ persuasion × 0.14\n"
-            "+ attaque × 0.16\n"
-            "+ implicite × 0.10\n"
+            " amplification × 0.16\n"
+            "+ saturation_rhetorique × 0.20\n"
+            "+ persuasion × 0.12\n"
+            "+ attaque × 0.14\n"
+            "+ implicite × 0.08\n"
             "+ soupcon_systemique × 0.10\n"
-            "+ coherence_performative × 0.10\n"
-            ")\n"
-            "pression = min(pression, 1.0)"
+            "+ coherence_performative × 0.08\n"
             "+ colere × 0.08\n"
             "+ peur × 0.04\n"
+            ")\n\n"
+            "si discours_rapporté > 0.45 : pression × 0.75\n"
+            "si discours_rapporté > 0.25 : pression × 0.88\n"
+            "pression = min(max(pression, 0), 1.0)"
         )
         
         st.markdown("**Poids des mécanismes**")
@@ -13893,14 +14465,27 @@ with oi1:
         soupcon_systemique=result.get("rhetorical_scores", {}).get("soupcon_systemique", 0),
         attaque=result.get("rhetorical_scores", {}).get("attaque", 0),
         amplification=result.get("rhetorical_scores", {}).get("amplification", 0),
+
         colere=result.get("emotional_registers", {}).get("colere", 0),
         peur=result.get("emotional_registers", {}).get("peur", 0),
+
+        reported_speech=max(
+            result.get("reported_speech_score", 0),
+            result.get("reported_speech_ratio", 0),
+            result.get("reported_speech", 0),
+            result.get("reported_speech_gauge", 0),
+        ),
     )
-    
-    propaganda_label, propaganda_color, propaganda_text = interpret_propaganda_gauge(propaganda_value)
-    
-    render_custom_gauge(propaganda_value, propaganda_color)
-    
+
+    propaganda_label, propaganda_color, propaganda_text = interpret_propaganda_gauge(
+        propaganda_value
+    )
+
+    render_custom_gauge(
+        propaganda_value,
+        propaganda_color
+    )
+
     st.markdown(
         f"<b style='color:{propaganda_color}'>{propaganda_label}</b> — {round(propaganda_value*100, 1)}%",
         unsafe_allow_html=True
@@ -14249,8 +14834,9 @@ with oi4:
 
         st.markdown("**Formule utilisée**")
         st.code(
-            "markers = dissonances internes détectées\n"
-            "score = min(len(markers) * coefficient / 10, 1.0)",
+            "contradictions = contradictions fortes détectées\n"
+            "tensions = tensions internes faibles détectées\n"
+            "score = min(len(contradictions)*0.28 + len(tensions)*0.12, 1.0)",
             language="python"
         )
 
@@ -14260,6 +14846,7 @@ with oi4:
         st.write(f"Score : **{round(value * 100, 1)}%**")
         st.write(f"Niveau : **{label}**")
         st.write(f"Marqueurs détectés : **{len(markers)}**")
+        st.caption("Les tensions faibles pèsent moins que les contradictions formelles.")
 
         st.markdown("**Interprétation actuelle**")
         st.write(result["internal_dissonance_interpretation"])
@@ -15027,9 +15614,19 @@ with al5:
 # -----------------------------
 with al6:
     st.markdown("### Cherry Picking")
-    st.caption("Sélection biaisée d’exemples, de cas ou de preuves allant dans un seul sens.")
+    st.caption(
+        "Sélection biaisée d’exemples, de cas ou de preuves allant dans un seul sens."
+    )
 
-    value = result["cherry_picking_score"]
+    value = result.get("cherry_picking_score", 0.0)
+
+    markers = result.get("cherry_picking_markers", [])
+    omissions = result.get("cherry_picking_omission_markers", [])
+    structural = result.get("cherry_picking_structural_markers", [])
+
+    # Sécurité : impossible d'avoir 100 % sans preuve
+    if not markers and not omissions and not structural:
+        value = 0.0
 
     if value < 0.15:
         label, color = "Faible", "#ca8a04"
@@ -15050,12 +15647,12 @@ with al6:
     st.caption(result["cherry_picking_interpretation"])
 
     with st.expander("🔎 Voir les marqueurs", expanded=False):
-        markers = result.get("cherry_picking_markers", [])
-        omissions = result.get("cherry_picking_omission_markers", [])
 
-        if not markers and not omissions:
+        if not markers and not omissions and not structural:
             st.info("Aucune sélection biaisée notable détectée.")
+
         else:
+
             if markers:
                 st.markdown("**Exemples isolés / preuves uniques**")
                 for marker in markers:
@@ -15066,7 +15663,13 @@ with al6:
                 for marker in omissions:
                     st.error(marker)
 
+            if structural:
+                st.markdown("**Structures exemple → conclusion**")
+                for marker in structural:
+                    st.warning(marker)
+
     with st.popover("ℹ️ Comprendre cette jauge"):
+
         st.markdown("### Cherry Picking")
 
         st.write(
@@ -15075,32 +15678,50 @@ with al6:
         )
 
         st.markdown("**Principe**")
+
         st.write(
-            "Le texte est comparé à deux familles de signaux : les exemples isolés ou preuves uniques, "
+            "Le texte est comparé à deux familles de signaux : "
+            "les exemples isolés ou preuves uniques, "
             "et les indices d’omission stratégique."
         )
 
         st.markdown("**Formule utilisée**")
+
         st.code(
-            "markers = exemples isolés ou preuves uniques détectés\n"
-            "omissions = indices d’omission stratégique détectés\n"
-            "score = min((len(markers) + len(omissions) * poids_omission) * coefficient / 10, 1.0)",
+            "markers = exemples isolés détectés\n"
+            "omissions = indices d’omission stratégique\n"
+            "structural = structures exemple → conclusion\n"
+            "score = min((len(markers)*0.25 + "
+            "len(omissions)*0.35 + "
+            "len(structural)*0.35), 1.0)",
             language="python"
         )
 
-        markers = result.get("cherry_picking_markers", [])
-        omissions = result.get("cherry_picking_omission_markers", [])
-
         st.markdown("**Valeur actuelle**")
+
         st.write(f"Score : **{round(value * 100, 1)}%**")
         st.write(f"Niveau : **{label}**")
-        st.write(f"Exemples / preuves uniques : **{len(markers)}**")
-        st.write(f"Omissions stratégiques : **{len(omissions)}**")
+
+        st.write(
+            f"Exemples / preuves uniques : **{len(markers)}**"
+        )
+
+        st.write(
+            f"Omissions stratégiques : **{len(omissions)}**"
+        )
+
+        st.write(
+            f"Structures détectées : **{len(structural)}**"
+        )
 
         st.markdown("**Interprétation actuelle**")
-        st.write(result["cherry_picking_interpretation"])
+
+        st.write(
+            result["cherry_picking_interpretation"]
+        )
 
         st.markdown("**Lecture**")
+
         st.write(
             "🟢 Faible : sélection peu biaisée\n"
             "🟡 Modérée : quelques exemples orientés\n"
@@ -15109,6 +15730,7 @@ with al6:
         )
 
         st.markdown("**Attention**")
+
         st.write(
             "Un score élevé ne signifie pas que les exemples cités sont faux. "
             "Il indique que le texte peut choisir certains éléments favorables "
@@ -15999,9 +16621,10 @@ with bf5:
     # Autorité vague (simple)
     # =============================
     with bf6:
-        st.markdown("### Autorité vague (simple)")
-        st.caption("Autorité invoquée sans source clairement traçable.")
-    
+        st.markdown("### Autorité déclarative")
+        st.caption(
+            "Détection brute des appels à une autorité évoquée sans référence explicite."
+        )
         value = result["vague_authority_basic_score"]
     
         if value < 0.15:
@@ -16025,16 +16648,16 @@ with bf5:
         with st.expander("🔎 Voir les marqueurs", expanded=False):
             markers = result.get("vague_authority_basic_markers", [])
             if not markers:
-                st.info("Aucune autorité vague simple notable détectée.")
+                st.info("Aucune autorité déclarative notable détectée.")
             else:
                 for marker in markers:
                     st.warning(marker)
     
         with st.popover("ℹ️ Comprendre cette jauge"):
-            st.markdown("### Autorité vague (simple)")
+            st.markdown("### Autorité déclarative")
     
             st.write(
-                "Cette jauge détecte les appels à une autorité non précisée : "
+                "Cette jauge détecte uniquement les formulations déclaratives invoquant une autorité sans référence explicite."
                 "experts, études ou sources évoqués sans référence vérifiable."
             )
     
@@ -17015,6 +17638,134 @@ st.caption("Ouverture cognitive ⟵⟶ Clôture cognitive")
 st.caption(closure_text)
 st.markdown(f"**{T['interpretation']} :** {cog.interpret()}")
 
+# =============================
+# Ancrage au réel
+# =============================
+
+st.markdown("──── 🧪 ────")
+st.subheader("Ancrage au réel")
+
+st.caption(
+    "Cette jauge mesure dans quelle mesure le discours reste contraint "
+    "par l’expérience, la reproductibilité, la falsifiabilité et "
+    "la reconnaissance explicite de ses limites."
+)
+
+anchor_score = result.get("real_anchor_score", 0)
+anchor_label = result.get("real_anchor_label", "Non calculé")
+anchor_text = result.get("real_anchor_interpretation", "")
+
+if anchor_score < 3:
+    anchor_color = "#7f1d1d"   # rouge sombre
+    anchor_label = "Très faible"
+
+elif anchor_score < 7:
+    anchor_color = "#b45309"   # cuivre
+    anchor_label = "Fragile"
+
+elif anchor_score < 12:
+    anchor_color = "#a16207"   # ambre
+    anchor_label = "Modéré"
+
+elif anchor_score < 16:
+    anchor_color = "#57534e"   # pierre / neutre
+    anchor_label = "Fort"
+
+else:
+    anchor_color = "#334155"   # bleu acier
+    anchor_label = "Très fort"
+
+render_custom_gauge(anchor_score / 20, anchor_color)
+
+st.markdown(
+    f"<b style='color:{anchor_color}'>{anchor_label}</b> — {anchor_score}/20",
+    unsafe_allow_html=True
+)
+
+st.caption(anchor_text)
+
+st.caption("Spéculation libre ⟵⟶ Contrainte du réel")
+
+st.caption(
+    "Contrairement aux jauges morales classiques, cette palette ne récompense "
+    "pas une supposée vérité. Elle visualise la tension entre spéculation libre "
+    "et contrainte du réel. Les couleurs froides et minérales indiquent "
+    "une structure davantage stabilisée par l’expérience et la reproductibilité."
+)
+
+# =============================
+# Composantes
+# =============================
+
+st.markdown("### Composantes de l’ancrage")
+
+c1, c2 = st.columns(2)
+c3, c4 = st.columns(2)
+c5, _ = st.columns(2)
+
+c1.metric("Empirie", result.get("real_anchor_E", 0))
+c2.metric("Reproductibilité", result.get("real_anchor_R", 0))
+c3.metric("Falsifiabilité", result.get("real_anchor_F", 0))
+c4.metric("Limites", result.get("real_anchor_L", 0))
+c5.metric("Spéculation", result.get("real_anchor_S", 0))
+
+# =============================
+# Delta réalité / mécroyance
+# =============================
+
+st.markdown("### Tension réalité / cohérence")
+
+delta = result.get("delta_reality", 0)
+delta_label = result.get("delta_reality_label", "Non calculé")
+delta_text = result.get("delta_reality_interpretation", "")
+
+if delta <= -5:
+    delta_color = "#16a34a"
+
+elif delta <= 2:
+    delta_color = "#ca8a04"
+
+else:
+    delta_color = "#dc2626"
+
+st.markdown(
+    f"<b style='color:{delta_color}'>{delta_label}</b> — Δ = {delta}",
+    unsafe_allow_html=True
+)
+
+st.caption(delta_text)
+
+# =============================
+# Marqueurs détectés
+# =============================
+
+with st.expander("Voir les marqueurs d’ancrage", expanded=False):
+
+    st.write(
+        "**Empirie :**",
+        result.get("real_anchor_empirical_markers", [])
+    )
+
+    st.write(
+        "**Reproductibilité :**",
+        result.get("real_anchor_reproducibility_markers", [])
+    )
+
+    st.write(
+        "**Falsifiabilité :**",
+        result.get("real_anchor_falsifiability_markers", [])
+    )
+
+    st.write(
+        "**Limites explicites :**",
+        result.get("real_anchor_limits_markers", [])
+    )
+
+    st.write(
+        "**Spéculation extrapolative :**",
+        result.get("real_anchor_speculation_markers", [])
+    )
+
 st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
 ──── 🧠 ────
@@ -17331,9 +18082,9 @@ with st.form("feedback_form"):
         height=160
     )
 
-    submitted = st.form_submit_button("Envoyer le feedback")
+    feedback_submitted = st.form_submit_button("Envoyer le feedback")
 
-if submitted:
+if feedback_submitted:
     if not message.strip():
         st.warning("Veuillez écrire un message avant d’envoyer.")
     else:
