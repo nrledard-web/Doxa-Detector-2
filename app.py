@@ -855,13 +855,6 @@ def compute_linguistic_suspicion(text: str) -> dict:
         "toujours", "jamais", "tout le monde", "personne", "tous", "aucun"
     ]
 
-    vague_authority_terms = [
-        "experts say", "sources say", "insiders say", "many specialists",
-        "according to sources", "internal sources", "reports confirm",
-        "les experts disent", "des sources affirment", "selon des sources",
-        "des spécialistes", "des rapports confirment", "sources internes"
-    ]
-
     dramatic_framing_terms = [
         "shocking truth", "what they don't want you to know", "unbelievable",
         "hidden truth", "explosive revelation", "scandalous",
@@ -879,7 +872,7 @@ def compute_linguistic_suspicion(text: str) -> dict:
 
     rhetorical_pressure = count_hits(rhetorical_pressure_terms)
     absolute_claims = count_hits(STRONG_CERTAINTY_MARKERS)
-    vague_authority = count_hits(vague_authority_terms)
+    vague_authority = count_hits(VAGUE_AUTHORITY_TERMS)
     dramatic_framing = count_hits(dramatic_framing_terms)
     nuance_hits = count_hits(nuance_terms)
     ingroup_hits = count_hits(INGROUP_TERMS)
@@ -1169,32 +1162,6 @@ ABSOLUTE_PREDICTION_MARKERS = [
     "nous allons assister à",
     "va nécessairement",
     "finira par",
-]
-THREAT_AMPLIFICATION_MARKERS = [
-    "crise majeure",
-    "crise sociale majeure",
-    "catastrophe",
-    "catastrophique",
-    "effondrement",
-    "danger",
-    "danger imminent",
-    "grave menace",
-    "menace",
-    "menace existentielle",
-    "chaos",
-    "désastre",
-    "désastreux",
-    "désastreuse",
-    "désastreuses",
-    "urgence",
-    "urgence absolue",
-    "urgent",
-    "avant qu'il ne soit trop tard",
-    "il sera trop tard",
-    "si rien n'est fait",
-    "conséquences désastreuses",
-    "tout va empirer",
-    "irréversible",
 ]
 STRONG_CERTAINTY_MARKERS = [
     # tes marqueurs (gardés)
@@ -1895,18 +1862,26 @@ def compute_lie_gauge(M: float, ME: float):
     if gauge < 0.20:
         label = "Mécroyance forte"
         color = "#a16207"
+    
     elif gauge < 0.40:
         label = "Mécroyance modérée"
         color = "#ca8a04"
+    
     elif gauge < 0.60:
         label = "Zone ambiguë"
         color = "#f59e0b"
-    elif gauge < 0.80:
-        label = "Mensonge probable"
+    
+    elif gauge < 0.75:
+        label = "Manipulation probable"
+        color = "#f97316"
+    
+    elif gauge < 0.92:
+        label = "Manipulation forte probable"
         color = "#dc2626"
+    
     else:
-        label = "Mensonge structurel détecté"
-        color = "#991b1b"
+        label = "Mensonge probable"
+        color = "#7f1d1d"
     
     if gauge < 0.5:
         intensity = (0.5 - gauge) * 0.8
@@ -2442,7 +2417,7 @@ def detect_enthymemes_from_claims(claims: List[Claim]) -> List[Dict]:
         "il s'ensuit que",
         "il s’ensuit que",
         "cela montre que",
-        "cela prouve que"
+        "cela prouve que",
         
     # ajouts
         "il devient donc nécessaire",
@@ -2760,23 +2735,40 @@ SCIENTIFIC_SIMULATION_MARKERS = {
     "references_vagues": [
         "des études montrent", "la science prouve", "les chercheurs disent",
         "les scientifiques ont démontré", "plusieurs recherches montrent",
-        "according to studies", "science proves", "research shows"
+        "according to studies", "science proves", "research shows",
     ],
+
     "technicite_rhetorique": [
         "système", "structure", "dynamique", "modèle",
         "mécanisme", "processus", "paradigme",
-        "system", "structure", "dynamics", "model", "mechanism", "process"
+        "system", "structure", "dynamics", "model", "mechanism", "process",
     ],
-    
+
     "chiffres_sans_source": [
         "pour cent",
         "une étude récente",
         "plusieurs recherches",
         "des statistiques montrent",
         "recent study",
-        "statistics show"
+        "statistics show",
     ]
 }
+
+SCIENTIFIC_SIMULATION_MARKERS["technicite_rhetorique"] += [
+    "cycle de vie",
+    "empreinte carbone",
+    "kilowattheure",
+    "neutralité carbone",
+    "stockage à long terme",
+    "recyclage partiel",
+    "combustibles usés",
+    "circuit fermé",
+    "rejets thermiques",
+    "biodiversité",
+    "artificialisation des sols",
+    "production stable",
+    "production prévisible",
+]
 
 def tokenize_words(text: str):
     return re.findall(r"\b[\wÀ-ÿ'-]+\b", text.lower())
@@ -3109,11 +3101,6 @@ CAUSAL_OVERREACH_TERMS = [
     "ce qui entraîne",
     "ce qui conduit à",
     "ce qui provoque",
-    "therefore",
-    "this proves that",
-    "this shows that",
-    "this leads to",
-    "which explains",
 ]
 
 VAGUE_AUTHORITY_TERMS = [
@@ -3139,12 +3126,24 @@ VAGUE_AUTHORITY_TERMS = [
     "les données montrent",
     "les données indiquent",
     "le consensus scientifique",
-    "according to experts",
-    "experts say",
-    "studies show",
-    "research suggests",
-    "scientific consensus",
+    "les experts disent", 
+    "des sources affirment", 
+    "selon des sources",
+    "des spécialistes", 
+    "des rapports confirment", 
+    "sources internes"
 ]
+
+VAGUE_AUTHORITY_TERMS += [
+    "les études montrent",
+    "les scénarios de transition énergétique montrent",
+    "les scénarios établis par",
+    "l'agence internationale de l'énergie",
+    "l’agence internationale de l’énergie",
+    "réseau de transport d'électricité",
+    "réseau de transport d’électricité",
+]
+
 # -----------------------------
 # Généralisation abusive
 # -----------------------------
@@ -3195,6 +3194,15 @@ FRAME_SHIFT_TERMS = [
     "le vrai problème",
     "ce n'est pas la question",
     "la question n'est pas là",
+]
+
+FRAME_SHIFT_TERMS += [
+    "souveraineté énergétique",
+    "sécurité économique",
+    "indépendance nationale",
+    "au-delà de l'électricité",
+    "idées reçues",
+    "réalités factuelles",
 ]
 
 ATTACK_TERMS = [
@@ -3304,15 +3312,20 @@ EMOTIONAL_DICT = {
     "valeurs": 0.35,
     "disparaître": 0.70,
     "disparaîtra": 0.70,
-
-    # anglais optionnel
-    "panic": 0.70,
-    "scandal": 0.60,
-    "outrage": 0.60,
-    "fear": 0.60,
-    "collapse": 0.75,
-    "crisis": 0.50,
 }
+
+# -----------------------------
+# Ajouts émotionnels
+# -----------------------------
+EMOTIONAL_DICT.update({
+    "indispensable": 0.35,
+    "souveraineté": 0.40,
+    "sécurité": 0.35,
+    "indépendance nationale": 0.45,
+    "solution concrète": 0.35,
+    "énergie du passé": 0.35,
+})
+
 # -----------------------------
 # Faux consensus
 # -----------------------------
@@ -3338,8 +3351,6 @@ CONSENSUS_TERMS += [
     "ceux qui ouvrent les yeux",
     "personne ne mentionne",
 ]
-
-
 # -----------------------------
 # Opposition binaire
 # -----------------------------
@@ -3364,11 +3375,7 @@ BINARY_OPPOSITION_TERMS = [
     "d’un côté ceux",
     "de l'autre ceux",
     "de l’autre ceux",
-    "soit",
-    "soit on",
-    "soit nous",
     "il n'y a pas de position intermédiaire",
-    "il n’y a pas de position intermédiaire",
     "pas de position intermédiaire",
     "refuser de choisir",
     "c'est déjà choisir",
@@ -3376,9 +3383,37 @@ BINARY_OPPOSITION_TERMS = [
     "ceux qui ouvrent les yeux",
     "ceux qui refusent de voir",
     "ceux qui veulent préserver",
-    "ceux qui participent"
+    "ceux qui participent",
+
+    # cas comparatifs / oppositions thématiques
+    "gaz à effet de serre ou déchets nucléaires",
+    "dérèglement du climat ou danger nucléaire",
+    "plutôt que les énergies fossiles",
+    "proposer l'énergie nucléaire plutôt que",
+    "proposer l’énergie nucléaire plutôt que",
+    "remplacer un problème par un autre",
+    "alors que les énergies renouvelables",
 ]
 
+BINARY_OPPOSITION_STRONG_TERMS = [
+    "eux contre nous",
+    "nous contre eux",
+    "le peuple contre",
+    "les élites contre",
+    "les patriotes contre",
+    "les traîtres",
+    "les ennemis du peuple",
+    "gaz à effet de serre ou déchets nucléaires",
+    "dérèglement du climat ou danger nucléaire",
+    "remplacer un problème par un autre",
+]
+
+BINARY_OPPOSITION_WEAK_TERMS = [
+    "plutôt que les énergies fossiles",
+    "proposer l'énergie nucléaire plutôt que",
+    "proposer l’énergie nucléaire plutôt que",
+    "alors que les énergies renouvelables",
+]
 # -----------------------------
 # Qualifications normatives
 # -----------------------------
@@ -3434,6 +3469,74 @@ ASSERTION_MARKERS = [
     "est", "sont", "doit", "doivent", "va", "vont",
     "toujours", "jamais", "aucun", "tous", "personne"
 ]
+# -----------------------------
+# Ajouts nucléaire / discours écologico-technocratique
+# -----------------------------
+
+QUALIFICATIONS_NORMATIVES += [
+  
+    "véritable fléau",
+    "excessivement dangereux",
+    "excessivement dangereuse",
+    "plus sûres",
+    "pas propre",
+    "remplacer la peste par le choléra",
+]
+
+EMOTIONAL_DICT.update({
+    "fléau": 0.65,
+    "véritable fléau": 0.75,
+    "peste": 0.70,
+    "choléra": 0.70,
+    "danger nucléaire": 0.65,
+    "excessivement dangereuse": 0.65,
+    "fatidique": 0.45,
+    "malin plaisir": 0.55,
+    "chiffon rouge": 0.50,
+})
+
+ATTACK_TERMS += [
+    "petite musique",
+    "orchestrée",
+    "orchestré",
+    "promoteurs",
+    "promoteurs de l'industrie nucléaire",
+    "promoteurs de l’industrie nucléaire",
+    "prennent un malin plaisir",
+    "agitent le chiffon rouge",
+    "chiffon rouge",
+]
+
+FRAME_SHIFT_TERMS += [
+    "ce n'est pas pour autant",
+    "ce n’est pas pour autant",
+    "en réalité",
+    "et ce n'est pas tout",
+    "et ce n’est pas tout",
+    "le problème ?",
+]
+
+BINARY_OPPOSITION_TERMS += [
+    "gaz à effet de serre ou déchets nucléaires",
+    "dérèglement du climat ou danger nucléaire",
+    "plutôt que les énergies fossiles",
+    "proposer l'énergie nucléaire plutôt que",
+    "proposer l’énergie nucléaire plutôt que",
+    "remplacer un problème par un autre",
+    "alors que les énergies renouvelables",
+]
+
+NARRATIVE_PRESSURE_MARKERS += [
+    "véritable fléau",
+    "quantités démesurées",
+    "plusieurs milliers d'années",
+    "générations futures",
+    "peste par le choléra",
+    "remplacer la peste par le choléra",
+    "prennent un malin plaisir",
+    "agitent le chiffon rouge",
+]
+
 
 def detect_normative_charges(text: str):
     if not text or not text.strip():
@@ -4039,7 +4142,7 @@ def compute_binary_opposition(text: str):
 
     hits = [
         term for term in BINARY_OPPOSITION_TERMS
-        if contains_term(t, term) or term in t
+        if contains_term(t, term)
     ]
 
     # Bonus structurel : d'un côté / de l'autre
@@ -4052,14 +4155,41 @@ def compute_binary_opposition(text: str):
 
     hits = unique_keep_order(hits)
 
-    score = min(len(hits) * 0.25, 1.0)
+    strong_hits = [
+        h for h in hits
+        if h in BINARY_OPPOSITION_STRONG_TERMS
+    ]
+
+    weak_hits = [
+        h for h in hits
+        if h in BINARY_OPPOSITION_WEAK_TERMS
+    ]
+
+    other_hits = [
+        h for h in hits
+        if h not in BINARY_OPPOSITION_STRONG_TERMS
+        and h not in BINARY_OPPOSITION_WEAK_TERMS
+    ]
+
+    weighted_hits = (
+        len(strong_hits) * 1.0
+        + len(weak_hits) * 0.5
+        + len(other_hits) * 0.7
+    )
+
+    word_count = max(len(t.split()), 1)
+    length_factor = max(1.0, word_count / 250)
+
+    density = weighted_hits / length_factor
+
+    score = min(density * 0.25, 1.0)
 
     if score < 0.15:
         interpretation = "Aucune opposition binaire significative détectée."
     elif score < 0.35:
         interpretation = "Tendance légère à structurer le discours en camps opposés."
     elif score < 0.60:
-        interpretation = "Opposition binaire marquée entre groupes."
+        interpretation = "Opposition binaire marquée entre pôles ou options."
     else:
         interpretation = "Discours fortement structuré en camps antagonistes."
 
@@ -4141,10 +4271,10 @@ def compute_frame_shift(text: str):
 
     t = normalize_text_for_markers(text)
 
-    hits = [
+    hits = unique_keep_order([
         term for term in FRAME_SHIFT_TERMS
-        if contains_term(t, term) or term in t
-    ]
+        if contains_term(t, term)
+    ])
 
     # Marqueurs de transition / bascule
     shift_connectors = [
@@ -4194,7 +4324,8 @@ def compute_frame_shift(text: str):
     elif has_nuance and has_certainty_or_threat:
         hits.append("coexistence nuance prudente / conclusion forte")
 
-    score = min(len(hits) * 0.35, 1.0)
+    hits = unique_keep_order(hits)
+    score = min(len(hits) * 0.12, 1.0)
 
     if score < 0.15:
         interpretation = "Peu de déplacement du cadre argumentatif."
@@ -4265,6 +4396,29 @@ def compute_argument_asymmetry(text: str):
         "interpretation": interpretation,
     }
 THREAT_AMPLIFICATION_MARKERS = [
+    "crise majeure",
+    "crise sociale majeure",
+    "catastrophe",
+    "catastrophique",
+    "effondrement",
+    "danger imminent",
+    "grave menace",
+    "menace",
+    "menace existentielle",
+    "chaos",
+    "désastre",
+    "désastreux",
+    "désastreuse",
+    "désastreuses",
+    "urgence absolue",
+    "urgent",
+    "avant qu'il ne soit trop tard",
+    "il sera trop tard",
+    "si rien n'est fait",
+    "conséquences désastreuses",
+    "tout va empirer",
+    "irréversible",
+    
     # menace extrême
     "menace existentielle",
     "danger extrême",
@@ -4297,6 +4451,12 @@ THREAT_AMPLIFICATION_MARKERS = [
     "à un tournant",
 ]
 
+THREAT_AMPLIFICATION_MARKERS += [
+    "danger nucléaire",
+    "excessivement dangereuse",
+    "véritable fléau",
+]
+
 def compute_threat_amplification(text: str):
     text_lower = normalize_text_for_markers(text)
 
@@ -4305,7 +4465,20 @@ def compute_threat_amplification(text: str):
         if contains_term(text_lower, marker)
     ]
 
-    score = min(len(hits) * 3 / 10, 1.0)
+    hits = unique_keep_order(hits)
+
+    # Évite le double comptage : "danger" + "danger nucléaire"
+    hits = [
+        h for h in hits
+        if not any(h != other and h in other for other in hits)
+    ]
+
+    weak_markers = {"danger", "urgence", "menace", "grave"}
+    strong_hits = [h for h in hits if h not in weak_markers]
+    weak_hits = [h for h in hits if h in weak_markers]
+
+    raw_score = len(strong_hits) * 0.16 + len(weak_hits) * 0.05
+    score = min(raw_score, 1.0)
 
     if score < 0.15:
         interpretation = "Aucune amplification de menace significative détectée."
@@ -4316,7 +4489,7 @@ def compute_threat_amplification(text: str):
     else:
         interpretation = "Le discours repose fortement sur une amplification dramatique de la menace."
 
-    return score, interpretation, hits
+    return round(score, 3), interpretation, hits
 
 # -----------------------------
 # 19) Fausse analogie
@@ -6588,7 +6761,9 @@ def compute_red_flag_penalties(metrics: dict) -> dict:
         "credibility_penalty": round(min(credibility_penalty, 8.0), 2),
         "lie_boost": round(min(lie_boost, 6.0), 2),
     }
-
+# -----------------------------
+# compute cognitive drifts
+# -----------------------------
 def compute_cognitive_drifts(G, N, D):
     M = (G + N) - D
 
@@ -6632,6 +6807,7 @@ def compute_cognitive_drifts(G, N, D):
         "global_cognitive_drift": global_drift,
         "cognitive_drift_interpretation": interpretation,
     }
+
 
 def classify_cognitive_regime(result: dict) -> dict:
     M = result["M"]
@@ -6918,6 +7094,428 @@ def compute_brain_indices(result: dict) -> dict:
         "dominant_regime": profile,
     }
 
+# -----------------------------
+# Indice de baratinage
+# -----------------------------
+def compute_baratinage_score(result):
+    """
+    Estime dans quelle mesure un discours produit
+    une impression de maîtrise supérieure
+    à ce que sa démonstration explicite semble soutenir.
+    """
+
+    # Facteurs augmentant l'indice
+    CF = result.get("strong_certainty_score", 0)
+    CE = result.get("deceptive_coherence", 0)
+    ACE = result.get("advanced_deceptive_coherence_score", 0)
+    RP = result.get("rhetorical_pressure", 0)
+    NP = result.get("narrative_pressure_score", 0)
+    PI = result.get("premise_score", 0)
+    CS = result.get("certainty_score", 0)
+
+    # Facteurs réduisant l'indice
+    HF = result.get("hard_fact_score", 0) / 20
+    AR = result.get("bonus_anchor", 0)
+    RV = result.get("bonus_revisability", 0)
+    BC = result.get("bonus_coherence", 0)
+    AS = result.get("argument_support_count", 0) * 0.08
+    AN = result.get("argument_nuances_count", 0) * 0.06
+
+    # -----------------------------
+    # Calcul heuristique principal
+    # -----------------------------
+    raw_heuristic = (
+        CF
+        + CE
+        + ACE
+        + RP
+        + NP
+        + PI
+        + CS
+    ) - (
+        HF
+        + AR
+        + RV
+        + BC
+        + AS
+        + AN
+    )
+
+    # -----------------------------
+    # Modulateur DOXA léger
+    # IB ≈ (G + 2D) − N
+    # -----------------------------
+    G = HF
+
+    D = (
+        result.get("strong_certainty_score", 0)
+        + result.get("certainty_score", 0)
+    ) / 2
+
+    N = (
+        result.get("bonus_anchor", 0)
+        + result.get("bonus_revisability", 0)
+        + result.get("bonus_coherence", 0)
+    ) / 3
+
+    doxa_baratinage = (G + (2 * D)) - N
+
+    # Poids volontairement faible
+    raw = raw_heuristic + (doxa_baratinage * 0.15)
+
+    # Normalisation
+    score = max(0.0, min(raw / 6, 1.0))
+
+    # Interprétation
+    if score < 0.15:
+        label = "Faible"
+        color = "#22c55e"
+        interpretation = (
+            "La démonstration paraît dominer l’effet discursif."
+        )
+
+    elif score < 0.35:
+        label = "Modéré"
+        color = "#eab308"
+        interpretation = (
+            "Le discours produit une certaine impression de maîtrise, "
+            "mais celle-ci reste partiellement soutenue."
+        )
+
+    elif score < 0.65:
+        label = "Élevé"
+        color = "#f97316"
+        interpretation = (
+            "L’impression de maîtrise semble dépasser la démonstration visible."
+        )
+
+    else:
+        label = "Très élevé"
+        color = "#dc2626"
+        interpretation = (
+            "Le discours paraît produire une forte impression de maîtrise "
+            "mal soutenue par la démonstration explicite."
+        )
+
+    return {
+        "baratinage_score": round(score, 3),
+        "baratinage_raw": round(raw, 3),
+        "baratinage_raw_heuristic": round(raw_heuristic, 3),
+        "baratinage_doxa_modulator": round(doxa_baratinage, 3),
+        "baratinage_label": label,
+        "baratinage_color": color,
+        "baratinage_interpretation": interpretation,
+    }
+
+# -----------------------------
+# Effet placebo étendu
+# -----------------------------
+def compute_extended_placebo_effect(result):
+    """
+    Mesure dans quelle mesure un vécu,
+    une impression ou une cohérence perçue
+    devient une preuve auto-validante.
+    """
+
+    # -----------------------------
+    # Variables théoriques
+    # M = (N + 2D) - G
+    # -----------------------------
+
+    EX = max(
+        result.get("factual_overinterpretation_score", 0),
+        result.get("self_validating_score", 0),
+        result.get("false_causality_basic_score", 0),
+        result.get("causal_overreach_score", 0),
+    )
+    
+    G = result.get("hard_fact_score", 0) / 20
+    
+    D = (
+        result.get("strong_certainty_score", 0)
+        + result.get("certainty_score", 0)
+    ) / 2
+    
+    N = (
+        result.get("bonus_anchor", 0)
+        + result.get("bonus_coherence", 0)
+        + result.get("bonus_revisability", 0)
+    ) / 3
+    
+    theoretical_raw = ((N + (2 * D)) - G) * EX
+    theoretical_score = max(0.0, min(1.0, theoretical_raw))
+
+    # -----------------------------
+    # Facteurs augmentant
+    # -----------------------------
+
+    CF = result.get("strong_certainty_score", 0)
+
+    PI = result.get("premise_score", 0)
+
+    CT = result.get("deceptive_coherence", 0)
+
+    ACT = result.get(
+        "advanced_deceptive_coherence_score",
+        0
+    )
+
+    SC = max(
+        result.get("causal_overreach_score", 0),
+        result.get("false_causality_basic_score", 0)
+    )
+
+    ND = (
+        result.get("narrative_overdetermination_score", 0)
+        + result.get("narrative_pressure_score", 0)
+    ) / 2
+
+    # -----------------------------
+    # Facteurs réduisant
+    # -----------------------------
+
+    AR = result.get("bonus_anchor", 0)
+
+    RV = result.get("bonus_revisability", 0)
+
+    BC = result.get("bonus_coherence", 0)
+
+    CA = (
+        result.get("argument_counterweight_count", 0)
+        * 0.08
+    )
+
+    HF = result.get("hard_fact_score", 0) / 20
+
+    heuristic_raw = (
+        CF
+        + PI
+        + CT
+        + ACT
+        + SC
+        + ND
+    ) - (
+        AR
+        + RV
+        + BC
+        + CA
+        + HF
+    )
+
+    heuristic_score = max(
+        0.0,
+        min(1.0, (heuristic_raw / 4) * max(EX, 0.25))
+    )
+
+    # -----------------------------
+    # Fusion
+    # -----------------------------
+
+    final_score = (
+        (theoretical_score * 0.60)
+        +
+        (heuristic_score * 0.40)
+    )
+
+    final_score = max(
+        0.0,
+        min(1.0, final_score)
+    )
+
+    # -----------------------------
+    # Interprétation
+    # -----------------------------
+
+    if final_score < 0.25:
+
+        label = "Faible"
+        color = "#16a34a"
+
+        interpretation = (
+            "Le discours ne semble pas transformer fortement "
+            "le vécu en preuve auto-validante."
+        )
+
+    elif final_score < 0.50:
+
+        label = "Modéré"
+        color = "#ca8a04"
+
+        interpretation = (
+            "Le discours présente une tendance limitée "
+            "à valider une croyance par le ressenti."
+        )
+
+    elif final_score < 0.75:
+
+        label = "Élevé"
+        color = "#f97316"
+
+        interpretation = (
+            "Le discours semble convertir "
+            "l'expérience en preuve subjective."
+        )
+
+    else:
+
+        label = "Très élevé"
+        color = "#dc2626"
+
+        interpretation = (
+            "Le discours paraît transformer "
+            "le ressenti en certitude auto-validée."
+        )
+
+    return {
+        "extended_placebo_raw": round(theoretical_raw, 2),
+        "extended_placebo_theoretical_score": round(theoretical_score, 3),
+        "extended_placebo_heuristic_score": round(heuristic_score, 3),
+        "extended_placebo_score": round(final_score, 3),
+        "extended_placebo_label": label,
+        "extended_placebo_color": color,
+        "extended_placebo_interpretation": interpretation,
+    }
+# -----------------------------
+# Indice d’omission stratégique
+# -----------------------------
+def compute_omission_score(result):
+    """
+    Estime dans quelle mesure le discours semble
+    sélectionner certains éléments au détriment
+    du contexte utile à l’interprétation.
+    """
+
+    # Facteurs augmentant l'indice
+    CP = result.get("cherry_picking_score", 0)
+    
+    DR = result.get("missing_reference_score", 0)
+    
+    PI = result.get("premise_score", 0)
+    
+    AA = result.get("argument_asymmetry_score", 0)
+    
+    CF = result.get("strong_certainty_score", 0)
+    
+    CC = result.get(
+        "cognitive_closure_score",
+        result.get("closure_score", 0)
+    )
+    
+    MS = result.get("statistical_manipulation_score", 0)
+    
+    # Facteurs réduisant l'indice
+    LM = result.get("limits_score", 0)
+    
+    RV = (
+        result.get("revisability_score", 0)
+        + result.get("bonus_revisability", 0)
+    )
+    
+    AR = (
+        result.get("reality_anchor_score", 0)
+        + result.get("bonus_anchor", 0)
+    )
+    
+    PX = result.get("precision_score", 0)
+    
+    CA = result.get("argument_counterweight_count", 0)
+
+# -----------------------------
+# Calcul heuristique principal
+# -----------------------------
+    raw_heuristic = (
+        CP
+        + (DR * 1.5)
+        + PI
+        + AA
+        + CF
+        + CC
+        + (MS * 0.35)
+    ) - (
+        LM
+        + RV
+        + AR
+        + PX
+        + CA
+    )
+
+    # -----------------------------
+    # Modulateur DOXA léger
+    # MO ≈ (G + D) − 2N
+    # -----------------------------
+
+    G = (
+        result.get("hard_fact_score", 0)
+        + AR
+    ) / 2
+
+    D = (
+        result.get("strong_certainty_score", 0)
+        + result.get("cognitive_closure_score", 0)
+    ) / 2
+
+    N = (
+        result.get("reality_anchor_score", 0)
+        + result.get("revisability_score", 0)
+    ) / 2
+
+    doxa_omission = (G + D) - (2 * N)
+
+    # Poids volontairement faible
+    raw = raw_heuristic + (doxa_omission * 0.15)
+
+    # Normalisation
+    score = max(0.0, min(raw / 12, 1.0))
+
+    # Interprétation
+    if score < 0.15:
+
+        label = "Faible"
+        color = "#22c55e"
+
+        interpretation = (
+            "Le contexte présenté paraît relativement complet."
+        )
+
+    elif score < 0.50:
+
+        label = "Modéré"
+        color = "#eab308"
+
+        interpretation = (
+            "Quelques éléments semblent peu contextualisés."
+        )
+
+    elif score < 0.75:
+
+        label = "Élevé"
+        color = "#f97316"
+
+        interpretation = (
+            "Le discours paraît sélectionner certains éléments "
+            "au détriment du contexte."
+        )
+
+    else:
+
+        label = "Très élevé"
+        color = "#dc2626"
+
+        interpretation = (
+            "Le discours semble fortement orienté "
+            "par sélection du contexte."
+        )
+
+    return {
+        "omission_score": round(score, 3),
+        "omission_raw": round(raw, 3),
+        "omission_raw_heuristic": round(raw_heuristic, 3),
+        "omission_doxa_modulator": round(doxa_omission, 3),
+        "omission_label": label,
+        "omission_color": color,
+        "omission_interpretation": interpretation,
+    }
+
 def compute_doxa_brain(result: dict) -> dict:
     """
     Synthèse finale du cerveau DOXA.
@@ -7014,6 +7612,9 @@ def compute_doxa_brain(result: dict) -> dict:
         "brain_summary": None
     }
 
+# -----------------------------
+# Pénalités mécroyance
+# -----------------------------
 def compute_mecroyance_penalties(result: dict) -> dict:
     penalty = 0.0
     lie_boost = 0.0
@@ -7098,7 +7699,6 @@ def compute_deceptive_coherence(G, N, D, rhetorical_pressure, propaganda_score, 
 # =========================================================
 # 🎨 Étalonnage visuel unifié des jauges
 # =========================================================
-
 def normalize_display_value(value: float) -> float:
     """Ramène une valeur 0–1 ou 0–20 vers 0–1."""
     if value is None:
@@ -7118,7 +7718,6 @@ def color_scale_risk(value: float) -> tuple[str, str]:
     else:
         return "#dc2626", "🔴 Critique"
 
-
 def color_scale_quality(value: float) -> tuple[str, str]:
     v = normalize_display_value(value)
 
@@ -7131,7 +7730,6 @@ def color_scale_quality(value: float) -> tuple[str, str]:
     else:
         return "#16a34a", "🟢 Robuste"
         
-
 def color_scale_warning_risk(value: float) -> tuple[str, str]:
     """
     Pour les jauges de risque sensible :
@@ -7148,12 +7746,10 @@ def color_scale_warning_risk(value: float) -> tuple[str, str]:
     else:
         return "#dc2626", "🔴 Critique"
 
-
 def interpret_generic_risk_gauge(label: str, value: float) -> str:
     v = normalize_display_value(value)
     color, level = color_scale_risk(v)
     return f"<b style='color:{color}'>{label}</b> — {level} ({round(v * 100, 1)}%)"
-
 
 def interpret_generic_quality_gauge(label: str, value: float) -> str:
     v = normalize_display_value(value)
@@ -7168,7 +7764,6 @@ def interpret_warning_risk_gauge(label: str, value: float) -> str:
 # -------------------------------------------------
 # Pénalité des jauges affichées
 # -------------------------------------------------
-
 def compute_display_gauge_penalty(result: dict) -> float:
 
     gauges = {
@@ -7190,6 +7785,7 @@ def compute_display_gauge_penalty(result: dict) -> float:
     }
 
     penalty = 0.0
+    details = []
 
     for key, weight in gauges.items():
 
@@ -7201,7 +7797,19 @@ def compute_display_gauge_penalty(result: dict) -> float:
         v = normalize_display_value(value)
 
         if v >= 0.25:
-            penalty += v * weight
+
+            p = round(v * weight, 2)
+
+            penalty += p
+
+            details.append({
+                "gauge": key,
+                "score": round(v, 3),
+                "weight": weight,
+                "penalty": p,
+            })
+
+    result["display_gauge_penalty_details"] = details
 
     return round(min(penalty, 5.0), 2)
 
@@ -7244,7 +7852,6 @@ def label_level(score):
     else:
         return "Très élevée"
 
-
 def compute_narrative_pressure(text):
     sentences = max(len(re.split(r"[.!?]+", text)), 1)
     markers = count_marker_occurrences(text, NARRATIVE_PRESSURE_MARKERS)
@@ -7257,7 +7864,6 @@ def compute_narrative_pressure(text):
         "markers": markers,
         "interpretation": "Le texte exerce une pression vers une conclusion." if score >= 0.4 else "Pression narrative limitée."
     }
-
 
 def compute_logical_jump(text):
     conclusions = count_marker_occurrences(text, CONCLUSION_MARKERS)
@@ -7273,7 +7879,6 @@ def compute_logical_jump(text):
         "reasons": reasons,
         "interpretation": "Conclusion possiblement insuffisamment démontrée." if score >= 0.4 else "Enchaînement logique relativement progressif."
     }
-
 
 def compute_argument_asymmetry(text):
     assertions = count_marker_occurrences(text, ASSERTION_MARKERS)
@@ -7416,7 +8021,6 @@ def compute_absolute_prediction(text):
         )
     }
 
-
 def compute_threat_amplification_advanced(text):
     sentences = max(len([s for s in re.split(r"[.!?]+", text) if s.strip()]), 1)
     markers = count_marker_occurrences(text, THREAT_AMPLIFICATION_MARKERS)
@@ -7433,7 +8037,6 @@ def compute_threat_amplification_advanced(text):
             else "Peu d’amplification explicite de menace."
         )
     }
-
 
 def compute_strong_certainty(text):
     t = normalize_text_for_markers(text)
@@ -7506,7 +8109,6 @@ def compute_strong_certainty(text):
 def contains_term(text: str, term: str) -> bool:
     return re.search(rf"\b{re.escape(term.lower())}\b", text.lower()) is not None
 
-
 JOURNALISTIC_MARKERS = [
     "selon", "d'après", "rapport", "étude", "enquête",
     "article", "communiqué", "sondage", "journal", "presse",
@@ -7514,7 +8116,6 @@ JOURNALISTIC_MARKERS = [
     "a déclaré", "a affirmé", "a indiqué", "a annoncé",
     "selon une étude", "selon le rapport", "d'après les données",
 ]
-
 PHILOSOPHICAL_MARKERS = [
     "vérité", "réalité", "existence", "être", "essence",
     "conscience", "raison", "pensée", "savoir", "croyance",
@@ -7522,7 +8123,6 @@ PHILOSOPHICAL_MARKERS = [
     "morale", "éthique", "justice", "liberté", "devoir",
     "dans quelle mesure", "qu'est-ce que", "en ce sens",
 ]
-
 RELIGIOUS_MARKERS = [
     "dieu", "divin", "foi", "religion", "croyant",
     "âme", "esprit", "sacré", "saint", "prière",
@@ -7570,13 +8170,10 @@ POLITICAL_MARKERS = [
     "peuple",
     "économie",
 ]
-
 # =========================================================
 # ENCYCLOPÉDIQUE
 # =========================================================
-
 ENCYCLOPEDIC_MARKERS = [
-
     "désigne",
     "correspond à",
     "se définit comme",
@@ -7601,13 +8198,10 @@ ENCYCLOPEDIC_MARKERS = [
     "refers to",
     "consists of",
 ]
-
 # =========================================================
 # DÉFINITIONNEL / PÉDAGOGIQUE
 # =========================================================
-
 DEFINITION_MARKERS = [
-
     "par exemple",
     "en résumé",
     "en d'autres termes",
@@ -7628,13 +8222,10 @@ DEFINITION_MARKERS = [
     "concept",
     "pédagogique",
 ]
-
 # =========================================================
 # GÉOPOLITIQUE
 # =========================================================
-
 GEOPOLITICAL_MARKERS = [
-
     "bloc occidental",
     "bloc de l'est",
     "sphère d'influence",
@@ -7659,13 +8250,10 @@ GEOPOLITICAL_MARKERS = [
     "world order",
     "geopolitical",
 ]
-
 # =========================================================
 # ÉCOLOGIQUE
 # =========================================================
-
 ECOLOGICAL_MARKERS = [
-
     "réchauffement climatique",
     "biodiversité",
     "empreinte carbone",
@@ -7688,13 +8276,10 @@ ECOLOGICAL_MARKERS = [
     "climate change",
     "carbon emissions",
 ]
-
 # =========================================================
 # SOCIAL / SOCIOLOGIQUE
 # =========================================================
-
 SOCIAL_MARKERS = [
-
     "inégalités sociales",
     "classes sociales",
     "mobilité sociale",
@@ -7716,13 +8301,10 @@ SOCIAL_MARKERS = [
     "social inequality",
     "social exclusion",
 ]
-
 # =========================================================
 # BIOGRAPHIQUE
 # =========================================================
-
 BIOGRAPHICAL_MARKERS = [
-
     "né en",
     "née en",
     "mort en",
@@ -7744,13 +8326,10 @@ BIOGRAPHICAL_MARKERS = [
     "portrait de",
     "figure historique",
 ]
-
 # =========================================================
 # FICTIONNEL / NARRATIF
 # =========================================================
-
 FICTION_MARKERS = [
-
     "roman",
     "personnage",
     "intrigue",
@@ -7772,13 +8351,10 @@ FICTION_MARKERS = [
     "drame",
     "aventure",
 ]
-
 # =========================================================
 # MYTHIQUE / SYMBOLIQUE
 # =========================================================
-
 MYTHIC_MARKERS = [
-
     "mythe",
     "légende",
     "symbole",
@@ -7796,7 +8372,6 @@ MYTHIC_MARKERS = [
     "transcendance",
     "initiation",
 ]
-
 def detect_conceptual_domains(text: str):
     t = text.lower()
 
@@ -7948,7 +8523,6 @@ def compute_reported_speech_ratio(text: str) -> dict:
         "markers": markers[:15],
         "interpretation": interpretation
     }
-
 # =============================
 # Ancrage au réel
 # =============================
@@ -7962,14 +8536,12 @@ REAL_ANCHOR_EMPIRY = [
     "%", "selon", "économistes", "expert", "secteurs", "postes", "créés", 
     "emplois", "finance", "santé"
 ]
-
 REAL_ANCHOR_REPRODUCIBILITY = [
     "méthode", "paramètres", "reproductible", "reproductibilité",
     "réplication", "répliqué", "protocole détaillé", "dataset",
     "jeu de données", "open source", "code source", "doi", "arxiv",
     "publication", "revue par les pairs", "littérature scientifique"
 ]
-
 REAL_ANCHOR_FALSIFIABILITY = [
     "hypothèse", "modèle partiel", "approximation", "sous certaines conditions",
     "pourrait être faux", "pourrait être réfuté", "compatible avec",
@@ -7977,7 +8549,6 @@ REAL_ANCHOR_FALSIFIABILITY = [
     "selon les données actuelles", "limite du modèle", "pourraient", "pourrait", 
     "certains", "restent prudents", "il faut nuancer", "nuancer", "cependant"
 ]
-
 REAL_ANCHOR_LIMITS = [
     "nous ne savons pas", "reste incomplet", "interprétation débattue",
     "hypothèse de travail", "limite actuelle", "nécessite validation",
@@ -7985,7 +8556,6 @@ REAL_ANCHOR_LIMITS = [
     "dans cette classe de systèmes", "conditions de validité",
     "limites de cette approche"
 ]
-
 SPECULATIVE_INFLATION_MARKERS = [
     "explique tout", "théorie du tout", "théorie unifiée",
     "structure cachée", "structure fondamentale du réel",
@@ -8001,7 +8571,6 @@ SPECULATIVE_INFLATION_MARKERS = [
     "étude choc"
 ]
 
-
 def count_real_anchor_markers(text, markers):
     t = text.lower()
     found = []
@@ -8011,7 +8580,6 @@ def count_real_anchor_markers(text, markers):
             found.append(marker)
 
     return found
-
 
 def normalize_component(count, divisor=4):
     """
@@ -8139,7 +8707,7 @@ def detect_real_anchor(text, result=None):
         "delta_reality_label": delta_label,
         "delta_reality_interpretation": delta_interpretation,
     }
-
+    
 def compute_cognitive_bonus(result: dict):
     """
     Module bonus :
@@ -8236,7 +8804,6 @@ def compute_cognitive_bonus(result: dict):
     }
 
 
-
 def analyze_article(text: str) -> Dict:
     article = text
     words = text.split()
@@ -8249,8 +8816,7 @@ def analyze_article(text: str) -> Dict:
 
     G = clamp(source_markers * 1.1 + citation_like * 0.2, 0, 10)
     N = clamp(nuance_markers * 1.4 + (article_length / 140), 0, 10)
-
-    normative_analysis = detect_normative_charges(text)
+    
     discursive_analysis = compute_discursive_coherence(text)
     premise_analysis = compute_implicit_premises(text)
     logic_confusion_analysis = compute_logic_confusion(text)
@@ -8341,11 +8907,20 @@ def analyze_article(text: str) -> Dict:
     D = clamp(D_raw * 10, 0, 10)
 
     # -----------------------------
-    # Indices dérivés
+    # Indices dérivés recalibrés
     # -----------------------------
-    M = round((G + N) - D, 1)
-    drifts = compute_cognitive_drifts(G, N, D)
+    G_drift = G * 0.5
+    N_drift = N
+    D_drift = D
 
+    M = round((G_drift + N_drift) - D_drift, 1)
+
+    drifts = compute_cognitive_drifts(
+        G_drift,
+        N_drift,
+        D_drift
+    )
+    
     penalties = compute_red_flag_penalties({
         "G": G,
         "certainty_score": certainty_analysis[0],
@@ -8578,7 +9153,7 @@ def analyze_article(text: str) -> Dict:
     ME_base = max(0, (2 * D) - (G + N))
 
     discursive_boost = sum([
-        normative_analysis["score"] * 2.0,
+        0,
         premise_analysis["score"] * 1.5,
         logic_confusion_analysis["score"] * 1.6,
         aristotelian_fallacies["score"] * 2.0,
@@ -8632,10 +9207,10 @@ def analyze_article(text: str) -> Dict:
         "ME_base": ME_base,
         "ME": ME,
         "L": L,
-        "normative_score": normative_analysis["score"],
-        "normative_terms": normative_analysis["normative_terms"],
-        "normative_judgment_markers": normative_analysis["judgment_markers"],
-        "normative_interpretation": normative_analysis["interpretation"],
+        "normative_score": 0,
+        "normative_terms": [],
+        "normative_judgment_markers": [],
+        "normative_interpretation": "",
 
         "semantic_shift_score": semantic_shift_analysis["score"],
         "semantic_shift_markers": semantic_shift_analysis["markers"],
@@ -8948,6 +9523,11 @@ def analyze_article(text: str) -> Dict:
         "drift_mecroyance": drifts["drift_mecroyance"],
         "drift_pseudo_savoir": drifts["drift_pseudo_savoir"],
         "drift_intuition_dogmatique": drifts["drift_intuition_dogmatique"],
+
+        "G_drift": round(G_drift, 3),
+        "N_drift": round(N_drift, 3),
+        "D_drift": round(D_drift, 3),
+        
         "global_cognitive_drift": drifts["global_cognitive_drift"],
         "cognitive_drift_interpretation": drifts["cognitive_drift_interpretation"],
 
@@ -8967,6 +9547,15 @@ def analyze_article(text: str) -> Dict:
     result["emotional_intensity_score"] = emotional_intensity_analysis["score"]
     result["emotional_intensity_markers"] = emotional_intensity_analysis["markers"]
     result["emotional_intensity_interpretation"] = emotional_intensity_analysis["interpretation"]
+
+    normative_analysis = detect_normative_charges(text)
+    
+    result["normative_charge_score"] = normative_analysis["score"]
+    result["normative_score"] = normative_analysis["score"]
+    
+    result["normative_terms"] = normative_analysis["normative_terms"]
+    result["normative_judgment_markers"] = normative_analysis["judgment_markers"]
+    result["normative_interpretation"] = normative_analysis["interpretation"]
 
     result["strong_certainty_hedge_count"] = strong_certainty_analysis.get("hedge_count", 0)
     result["strong_certainty_hedge_markers"] = strong_certainty_analysis.get("hedge_markers", [])
@@ -8996,6 +9585,27 @@ def analyze_article(text: str) -> Dict:
     bonus = compute_cognitive_bonus(result)
     result.update(bonus)
 
+    # -----------------------------
+    # Indice de baratinage
+    # -----------------------------
+    baratinage = compute_baratinage_score(result)
+    result.update(baratinage)
+    
+    # -----------------------------
+    # Indice d’omission stratégique
+    # -----------------------------
+    omission = compute_omission_score(result)
+    result.update(omission)
+    
+    # -----------------------------
+    # Effet placebo étendu
+    # -----------------------------
+    placebo = compute_extended_placebo_effect(result)
+    result.update(placebo)
+
+    # -----------------------------
+    # Cerveau DOXA
+    # -----------------------------
     # brain_indices = compute_brain_indices(result)
     # result.update(brain_indices)
     
@@ -9025,54 +9635,38 @@ def analyze_article(text: str) -> Dict:
     # Pénalité des jauges affichées
     # -----------------------------
     display_gauge_penalty = compute_display_gauge_penalty(result)
-
     result["display_gauge_penalty"] = display_gauge_penalty
-
-    result["credibility_penalty"] = round(
-        result.get("credibility_penalty", 0) + display_gauge_penalty,
+    
+    # On ajoute les jauges affichées au total général
+    total_credibility_penalty = round(
+        total_credibility_penalty + display_gauge_penalty,
         2
     )
-
-    result["final_credibility_score"] = round(
-        max(0, result["final_credibility_score"] - display_gauge_penalty),
-        1
-    )
-
+    
     # -----------------------------
     # Pénalités finales
     # -----------------------------
     result["credibility_penalty"] = total_credibility_penalty
+    
     result["penalty_details"] = {
         "red_flag_penalties": penalties,
         "mecroyance_penalties": mecroyance_penalties,
+        "display_gauge_penalty": display_gauge_penalty,
     }
+    
     result["penalty_index"] = total_credibility_penalty
-
-    result["hard_fact_score_penalized"] = result["final_credibility_score"]
-
-    result["improved_penalized"] = round(
-        max(0, result["improved"] - penalties["credibility_penalty"]),
+    
+    result["final_credibility_score"] = round(
+        max(0, result["hard_fact_score"] - total_credibility_penalty),
         1
     )
-
-    if result.get("historical_mode"):
-        result["hard_fact_score"] = max(result["hard_fact_score"], 10.0)
-        result["hard_fact_score_penalized"] = max(result["hard_fact_score_penalized"], 10.0)
-        result["final_credibility_note"] = (
-            "Régime historique détecté : le score est protégé contre une pénalisation "
-            "excessive liée aux énumérations chronologiques."
-        )
-
-    elif result.get("index_page_mode"):
-        result["hard_fact_score"] = max(result["hard_fact_score"], 9.0)
-        result["hard_fact_score_penalized"] = max(result["hard_fact_score_penalized"], 9.0)
-        result["final_credibility_note"] = (
-            "Page index détectée : le contenu semble composé majoritairement de titres "
-            "ou de liens. L'analyse de crédibilité est ajustée."
-        )
-
-    else:
-        result["final_credibility_note"] = ""
+    
+    result["hard_fact_score_penalized"] = result["final_credibility_score"]
+    
+    result["improved_penalized"] = round(
+        max(0, result["improved"] - total_credibility_penalty),
+        1
+    )
 
     # -----------------------------
     # Ancrage au réel
@@ -11329,6 +11923,201 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================
+# Barre de raisonnement
+# =============================
+
+score = result.get("hard_fact_score", 0)
+
+if score < 6:
+    couleur_r = "🔴"
+    color_r = "#dc2626"
+    etiquette_r = "Très fragile"
+    message_r = "Le texte présente peu d’éléments de raisonnement structurés."
+elif score < 9:
+    couleur_r = "🟠"
+    color_r = "#f97316"
+    etiquette_r = "Fragile"
+    message_r = "Le raisonnement existe, mais reste incomplet ou insuffisamment construit."
+elif score < 13:
+    couleur_r = "🟡"
+    color_r = "#facc15"
+    etiquette_r = "Modérée"
+    message_r = "Le texte présente une structure de raisonnement cohérente, mais plusieurs affirmations restent conceptuelles ou insuffisamment démontrées."
+elif score < 16:
+    couleur_r = "🟢"
+    color_r = "#16a34a"
+    etiquette_r = "Solide"
+    message_r = "Le discours est bien organisé en surface, mais cette cohérence ne garantit pas sa validité épistémique."
+else:
+    couleur_r = "🟢"
+    color_r = "#15803d"
+    etiquette_r = "Très solide"
+    message_r = "Le texte présente un raisonnement robuste, structuré et bien soutenu."
+
+st.subheader(f"{couleur_r} Solidité argumentative : {etiquette_r}")
+# Barre épaisse colorée
+st.caption(
+    "Cette jauge mesure la solidité argumentative globale du texte : "
+    "structure du raisonnement, cohérence logique, vérifiabilité, qualité des sources "
+    "et pénalités discursives détectées."
+)
+st.markdown(f"""
+<div style="width:100%; margin-top:10px; margin-bottom:10px;">
+    <div style="
+        width:100%;
+        height:26px;
+        background:#e5e7eb;
+        border-radius:12px;
+        overflow:hidden;
+        border:1px solid #cbd5e1;
+    ">
+        <div style="
+            width:{min(score / 20, 1) * 100}%;
+            height:100%;
+            background:{color_r};
+            transition:width 0.4s ease;
+        "></div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    f"<b style='color:{color_r}'>{etiquette_r}</b> — Score : {round(score, 1)}/20",
+    unsafe_allow_html=True
+)
+st.caption(message_r)
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown(f"""
+### Solidité argumentative
+
+Cette jauge estime la solidité argumentative globale du texte.
+
+Elle ne mesure pas :
+
+- la vérité absolue du texte ;
+- l’intention réelle du locuteur ;
+- la seule cohérence stylistique.
+
+Elle mesure plutôt la capacité du discours à soutenir ses affirmations par une structure logique, des éléments vérifiables et une base documentaire suffisante.
+
+---
+
+### Principe
+
+Le moteur combine :
+
+- la structure du raisonnement ;
+- la cohérence discursive ;
+- la vérifiabilité des affirmations ;
+- la qualité des sources ;
+- la présence de pénalités discursives.
+
+Cette jauge peut être fragilisée indirectement par :
+
+- le **baratinage**, lorsqu’une impression de maîtrise dépasse la démonstration visible ;
+- l’**omission stratégique**, lorsque le contexte utile semble insuffisamment présenté.
+
+L’**effet placebo étendu** n’est pas intégré ici sauf cas particulier.
+
+---
+
+### Formule utilisée
+
+```python
+HFS_brut = (
+    0.18 * G
+    + 0.12 * N
+    + 0.20 * V
+    + 0.22 * QS
+    + 0.18 * VC
+) - (
+    0.16 * D
+    + 0.12 * R
+    + 0.18 * RC
+    + P
+)
+
+HFS = HFS_brut + 8 + bonus_epistemique
+
+score = max(0, min(HFS, 20))
+```
+
+---
+
+### Où :
+
+- **G** = gnōsis / savoir articulé  
+- **N** = nous / compréhension intégrée  
+- **V** = vérifiabilité globale  
+- **QS** = qualité des sources  
+- **VC** = vérifiabilité moyenne des affirmations  
+- **D** = doxa / certitude  
+- **R** = risque rhétorique  
+- **RC** = risque moyen des affirmations  
+- **P** = pénalités de crédibilité  
+
+---
+
+### Fragilités complémentaires
+
+Baratinage :
+**{round(result.get("baratinage_score", 0) * 100, 1)}%**
+
+Omission stratégique :
+**{round(result.get("omission_score", 0) * 100, 1)}%**
+
+---
+
+### Valeur actuelle
+
+Score argumentatif :
+**{round(score, 1)}/20**
+
+Cohérence discursive brute :
+**{round(result.get("discursive_coherence_score", 0), 1)}/20**
+
+Crédibilité finale après pénalités :
+**{round(result.get("final_credibility_score", 0), 1)}/20**
+
+Couleurs
+
+🔴 Rouge — Très fragile
+Le texte présente peu d’éléments de raisonnement structurés.
+
+🟠 Orange — Fragile
+Le raisonnement existe mais reste incomplet ou insuffisamment construit.
+
+🟡 Jaune — Modérée
+Le texte présente une structure cohérente mais plusieurs affirmations restent conceptuelles ou insuffisamment démontrées.
+
+🟢 Vert — Solide
+Le discours est bien organisé et relativement soutenu.
+
+🟢 Vert foncé — Très solide
+Le texte présente un raisonnement robuste, structuré et bien soutenu.
+
+Lecture
+
+🔴 0–5.9 : raisonnement très fragile
+
+🟠 6–8.9 : raisonnement fragile
+
+🟡 9–12.9 : raisonnement modéré
+
+🟢 13–15.9 : raisonnement solide
+
+🟢 16–20 : raisonnement très solide
+
+Attention
+
+Un score élevé ne garantit pas que le texte est vrai.
+
+Il indique seulement que sa structure argumentative, ses appuis vérifiables et sa cohérence globale paraissent relativement solides.
+""")
+
+
+# =============================
 # Analyse analogique du raisonnement
 # =============================
 
@@ -11406,87 +12195,128 @@ else:
 st.caption(analogique_message)
 
 # Popover explicatif
-with st.popover("ℹ️ Formule / explication"):
+with st.popover("ℹ️ Comprendre cette jauge"):
+
     st.markdown(f"""
 ### Analyse analogique du raisonnement
 
-Cette jauge estime la **solidité cognitive et argumentative du raisonnement**.
+Cette jauge estime la **solidité argumentative après pénalités**.
 
-Elle ne mesure pas seulement la vérité brute des affirmations : elle évalue la **structure logique du discours**, sa vérifiabilité et les fragilités détectées.
+Elle ne mesure pas :
+
+- la vérité absolue du texte ;
+- l’intention réelle du locuteur ;
+- la seule cohérence stylistique.
+
+Elle mesure plutôt la solidité restante du raisonnement après prise en compte des fragilités détectées.
+
+---
+
+### Principe
+
+Cette jauge part de la solidité argumentative globale, puis tient compte des pénalités de crédibilité.
+
+Elle peut être diminuée par :
+
+- pression rhétorique ;
+- certitude excessive ;
+- contradiction interne ;
+- données sans référentiel ;
+- baratinage ;
+- omission stratégique.
+
+L’effet placebo étendu n’est pas intégré ici sauf cas particulier de discours expérientiel.
 
 ---
 
 ### Résultats de cette analyse
 
-Score analogique affiché : **{round(display_score,1)}/20**  
-Score brut calculé : **{round(real_score,1)}/20**
+Score affiché :
+**{round(display_score, 1)}/20**
 
-Verdict : **{score_label}**
+Score réel utilisé :
+**{round(real_score, 1)}/20**
 
----
-
-### Lecture du score
-
-Un score faible ne signifie pas nécessairement absence totale de contenu, mais plutôt une **accumulation de signaux de fragilité**.
-
-Plusieurs jauges secondaires peuvent être activées simultanément :
-
-- pression rhétorique  
-- certitude excessive  
-- simplification narrative  
-- déséquilibre entre savoir et affirmation  
-- pénalités de crédibilité  
-
-Lorsque ces signaux s’additionnent, ils **réduisent fortement la solidité apparente du raisonnement**, même si le texte reste structuré en surface.
+Verdict :
+**{score_label}**
 
 ---
 
-### Plancher visuel
+### Formule utilisée
 
-Le score affiché applique un **plancher minimal de 2/20** afin d’éviter une barre vide.
+```python
+score = final_credibility_score
 
-Le score réel (**{round(real_score,1)}**) reste utilisé pour tous les calculs internes.
+if final_credibility_score is None:
+    score = hard_fact_score
 
----
-
-### Formule heuristique réelle
-
-`HFS brut = (0.18×G + 0.12×N + 0.20×V + 0.22×QS + 0.18×VC) − (0.16×D + 0.12×R + 0.18×RC + P)`
-
-Puis :
-
-`HFS = HFS brut + 8 + bonus_épistémique`
-
-Le score final est borné entre **0 et 20**.
-
-Avec :
-
-- **G** : gnōsis  
-- **N** : nous  
-- **V** : vérifiabilité globale  
-- **QS** : qualité des sources  
-- **VC** : vérifiabilité moyenne des affirmations  
-- **D** : doxa  
-- **R** : risque rhétorique  
-- **RC** : risque moyen des affirmations  
-- **P** : pénalités de crédibilité  
+display_score = max(score, 2.0)
+```
 
 ---
 
-### Interprétation
+### Valeurs complémentaires
 
-0–6 : raisonnement très fragile  
-6–9 : raisonnement fragile  
-9–13 : raisonnement modéré  
-13–16 : raisonnement solide  
-16–20 : raisonnement très solide  
+Solidité argumentative brute :
+
+**{round(result.get("hard_fact_score", 0), 1)}/20**
+
+Crédibilité finale pénalisée :
+
+**{round(result.get("final_credibility_score", 0), 1)}/20**
+
+Pénalité de crédibilité :
+
+**{round(result.get("credibility_penalty", 0), 2)}**
+
+Baratinage :
+
+**{round(result.get("baratinage_score", 0) * 100, 1)}%**
+
+Omission stratégique :
+
+**{round(result.get("omission_score", 0) * 100, 1)}%**
 
 ---
 
-### Conclusion
+### Couleurs
 
-Un score de **{round(display_score,1)}/20** indique un raisonnement **{score_label.lower()}**,  
-avec une **présence notable de signaux de fragilité cognitive**.
+🔴 **Rouge — Faible**  
+Le raisonnement paraît très fragilisé.
+
+🟠 **Orange — Fragile**  
+Une structure existe mais reste peu démonstrative.
+
+🟡 **Jaune — Modérée**  
+La structure logique est présente mais plusieurs liens restent partiels ou insuffisamment soutenus.
+
+🟢 **Vert — Solide**  
+Les idées s’enchaînent de manière globalement cohérente.
+
+🟢 **Vert foncé — Très solide**  
+Le discours présente une progression claire, cohérente et bien structurée.
+
+---
+
+### Lecture
+
+🔴 **0–5.9** : raisonnement très fragile  
+
+🟠 **6–8.9** : raisonnement fragile  
+
+🟡 **9–12.9** : raisonnement modéré  
+
+🟢 **13–15.9** : raisonnement solide  
+
+🟢 **16–20** : raisonnement très solide  
+
+---
+
+### Attention
+
+Un score élevé ne garantit pas que le texte est vrai.
+
+Il indique seulement que le raisonnement conserve une solidité apparente après application des pénalités détectées.
 """)
 
 st.markdown("""
@@ -11520,138 +12350,546 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
 # =============================
-# Barre de raisonnement
+# 🧠 1. DÉRIVES COGNITIVES FONDAMENTALES
 # =============================
-
-score = result.get("hard_fact_score", 0)
-
-if score < 6:
-    couleur_r = "🔴"
-    color_r = "#dc2626"
-    etiquette_r = "Très fragile"
-    message_r = "Le texte présente peu d’éléments de raisonnement structurés."
-elif score < 9:
-    couleur_r = "🟠"
-    color_r = "#f97316"
-    etiquette_r = "Fragile"
-    message_r = "Le raisonnement existe, mais reste incomplet ou insuffisamment construit."
-elif score < 13:
-    couleur_r = "🟡"
-    color_r = "#facc15"
-    etiquette_r = "Modérée"
-    message_r = "Le texte présente une structure de raisonnement cohérente, mais plusieurs affirmations restent conceptuelles ou insuffisamment démontrées."
-elif score < 16:
-    couleur_r = "🟢"
-    color_r = "#16a34a"
-    etiquette_r = "Solide"
-    message_r = "Le discours est bien organisé en surface, mais cette cohérence ne garantit pas sa validité épistémique."
-else:
-    couleur_r = "🟢"
-    color_r = "#15803d"
-    etiquette_r = "Très solide"
-    message_r = "Le texte présente un raisonnement robuste, structuré et bien soutenu."
-
-st.subheader(f"{couleur_r} Cohérence structurelle : {etiquette_r}")
-# Barre épaisse colorée
-st.caption(
-    "Cette jauge mesure la Cohérence structurelle du texte : structure du raisonnement, "
-    "cohérence logique et présence d’éléments vérifiables. "
-    "La crédibilité globale dépend aussi de la qualité des sources et de la vérifiabilité des affirmations."
-)
-st.markdown(f"""
-<div style="width:100%; margin-top:10px; margin-bottom:10px;">
-    <div style="
-        width:100%;
-        height:26px;
-        background:#e5e7eb;
-        border-radius:12px;
-        overflow:hidden;
-        border:1px solid #cbd5e1;
-    ">
-        <div style="
-            width:{min(score / 20, 1) * 100}%;
-            height:100%;
-            background:{color_r};
-            transition:width 0.4s ease;
-        "></div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
 
 st.markdown(
-    f"<b style='color:{color_r}'>{etiquette_r}</b> — Score : {round(score, 1)}/20",
+    """
+<div style="text-align:center;">
+    <h3>🧠 Dérives cognitives fondamentales</h3>
+    <p style="color:#888; margin-top:-10px;">
+        Dérives internes du raisonnement liées à l’équilibre entre connaissance (G), compréhension (N) et certitude (D).
+    </p>
+</div>
+""",
     unsafe_allow_html=True
 )
-st.caption(message_r)
-with st.popover("ℹ️ Formule / explication"):
 
-    st.subheader(f"Verdict : {couleur_r} Solidité argumentative — {etiquette_r}")
-    st.caption(f"Score argumentatif : {round(score, 1)}/20 — {message_r}")
+# -----------------------------
+# Pseudo-savoir
+# -----------------------------
+st.markdown("### Pseudo-savoir")
+st.caption("Accumulation de savoirs mal intégrés ou mal compris.")
 
-    st.subheader("Résumé de l’analyse")
+value = min(result["drift_pseudo_savoir"] / 10, 1.0)
 
-    m1, m2 = st.columns(2)
-    m1.metric("Score argumentatif", round(score, 1))
-    m2.metric("Verdict", etiquette_r)
+if result["drift_pseudo_savoir"] < 1:
+    label, color = "Faible", "#16a34a"
+elif result["drift_pseudo_savoir"] < 3:
+    label, color = "Modérée", "#ca8a04"
+elif result["drift_pseudo_savoir"] < 6:
+    label, color = "Élevée", "#f97316"
+else:
+    label, color = "Très élevée", "#dc2626"
 
-    m3, m4 = st.columns(2)
-    m3.metric("G — gnōsis", round(result.get("G", 0), 2))
-    m4.metric("N — nous", round(result.get("N", 0), 2))
+render_custom_gauge(value, color)
+
+st.markdown(
+    f"<b style='color:{color}'>{label}</b> — {result['drift_pseudo_savoir']}",
+    unsafe_allow_html=True
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
 
     st.markdown(f"""
-### Ce que mesure cette jauge
+### Pseudo-savoir
 
-Cette jauge estime la **solidité argumentative globale** du texte.
+Cette jauge mesure un déséquilibre où le texte accumule du savoir apparent ou des éléments de connaissance, mais sans compréhension suffisamment intégrée.
 
-Elle combine la structure du raisonnement, la présence d’éléments vérifiables, la qualité des sources et les fragilités rhétoriques détectées.
+Elle ne mesure pas :
 
-### Signaux pris en compte
+- le mensonge ;
+- la vérité du texte ;
+- l’intention réelle du locuteur.
 
-La jauge s’appuie notamment sur :
+Elle mesure plutôt un risque d’accumulation cognitive mal intégrée.
 
-- **G — gnōsis**
-- **N — nous**
-- **V — vérifiabilité globale**
-- **QS — qualité des sources**
-- **VC — vérifiabilité moyenne des affirmations**
-- **D — doxa**
-- **R — risque rhétorique**
-- **RC — risque moyen des affirmations**
-- **P — pénalités de crédibilité**
+---
 
-### Formule heuristique réelle
+### Formule utilisée
 
-`HFS brut = (0.18×G + 0.12×N + 0.20×V + 0.22×QS + 0.18×VC) − (0.16×D + 0.12×R + 0.18×RC + P)`
+Pseudo-savoir = max(0, (G_drift + D) - N)
 
-Puis :
+Avec :
 
-`HFS = HFS brut + 8 + bonus_épistémique`
+- **G_drift** = savoir recalibré  
+- **D** = certitude  
+- **N** = compréhension intégrée  
 
-Le score final est borné entre **0 et 20**.
+---
 
-### Interprétation
+### Avec les valeurs actuelles
 
-- **0–6** : raisonnement très fragile
-- **6–9** : raisonnement fragile
-- **9–13** : raisonnement modéré
-- **13–16** : raisonnement solide
-- **16–20** : raisonnement très solide
+G_drift = **{result['G_drift']:.2f}**  
+D = **{result['D']:.2f}**  
+N = **{result['N']:.2f}**
 
-### Lecture du résultat
+Calcul :
 
-Un score de **{round(score, 1)}/20** indique une solidité argumentative **{etiquette_r.lower()}**.
+max(0, ({result['G_drift']:.2f} + {result['D']:.2f}) - {result['N']:.2f}) = **{result['drift_pseudo_savoir']:.2f}**
 
-{message_r}
+---
+
+### Couleurs
+
+🟢 **Vert — Faible**  
+Le savoir paraît suffisamment intégré.
+
+🟡 **Jaune — Modérée**  
+Le texte accumule certains éléments de savoir, mais leur intégration reste partielle.
+
+🟠 **Orange — Élevée**  
+Le discours donne une impression notable de savoir mal digéré ou insuffisamment relié.
+
+🔴 **Rouge — Très élevée**  
+Le texte semble fortement accumuler du savoir apparent sans compréhension intégrée suffisante.
+
+---
+
+### Lecture
+
+🟢 **Faible** : savoir intégré  
+🟡 **Modérée** : accumulation partiellement intégrée  
+🟠 **Élevée** : pseudo-savoir notable  
+🔴 **Très élevée** : accumulation cognitive dominante  
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que le texte est faux.
+
+Il indique seulement que le savoir affiché semble dépasser son intégration réelle dans le raisonnement.
+
+---
+
+### Normalisation graphique
+
+value = min(drift_pseudo_savoir / 10, 1.0)
+""")
+
+st.divider()
+
+# -----------------------------
+# Intuition dogmatique
+# -----------------------------
+st.markdown("### Intuition dogmatique")
+st.caption("Conviction forte sans base de savoir suffisante.")
+
+value = min(result["drift_intuition_dogmatique"] / 10, 1.0)
+
+if result["drift_intuition_dogmatique"] < 1:
+    label, color = "Faible", "#16a34a"
+elif result["drift_intuition_dogmatique"] < 3:
+    label, color = "Modérée", "#ca8a04"
+elif result["drift_intuition_dogmatique"] < 6:
+    label, color = "Élevée", "#f97316"
+else:
+    label, color = "Très élevée", "#dc2626"
+
+render_custom_gauge(value, color)
+
+st.markdown(
+    f"<b style='color:{color}'>{label}</b> — {result['drift_intuition_dogmatique']}",
+    unsafe_allow_html=True
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown(f"""
+### Intuition dogmatique
+
+Cette jauge mesure un déséquilibre où l’intuition ou la compréhension apparente s’allie à une certitude forte, mais sans base de savoir suffisamment articulée.
+
+Elle ne mesure pas :
+
+- le mensonge ;
+- la vérité du texte ;
+- l’intention réelle du locuteur.
+
+Elle mesure plutôt une conviction portée par la compréhension apparente plus que par le savoir articulé.
+
+---
+
+### Formule utilisée
+
+Intuition dogmatique = max(0, (N + D) - G_drift)
+
+Avec :
+
+- **N** = compréhension intégrée  
+- **D** = certitude  
+- **G_drift** = savoir recalibré  
+
+---
+
+### Avec les valeurs actuelles
+
+N = **{result['N']:.2f}**  
+D = **{result['D']:.2f}**  
+G_drift = **{result['G_drift']:.2f}**
+
+Calcul :
+
+max(0, ({result['N']:.2f} + {result['D']:.2f}) - {result['G_drift']:.2f}) = **{result['drift_intuition_dogmatique']:.2f}**
+
+---
+
+### Couleurs
+
+🟢 **Vert — Faible**  
+La conviction reste soutenue par une base de savoir suffisante.
+
+🟡 **Jaune — Modérée**  
+Une intuition ou compréhension apparente commence à dépasser le savoir articulé.
+
+🟠 **Orange — Élevée**  
+Le discours semble s’appuyer fortement sur une intuition affirmée.
+
+🔴 **Rouge — Très élevée**  
+La conviction semble nettement dépasser le savoir disponible.
+
+---
+
+### Lecture
+
+🟢 **Faible** : intuition contenue par le savoir  
+🟡 **Modérée** : intuition partiellement dominante  
+🟠 **Élevée** : intuition fortement structurante  
+🔴 **Très élevée** : conviction dogmatique dominante  
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que l’intuition est fausse.
+
+Il indique seulement que la conviction semble dépasser le savoir articulé disponible.
+
+---
+
+### Normalisation graphique
+
+value = min(drift_intuition_dogmatique / 10, 1.0)
+""")
+
+
+st.divider()
+
+# -----------------------------
+# Fermeture cognitive
+# -----------------------------
+st.markdown("### Fermeture cognitive")
+st.caption("Excès de certitude par rapport au savoir et à la compréhension.")
+
+value = min(result["drift_mecroyance"] / 10, 1.0)
+
+if result["drift_mecroyance"] < 1:
+    label, color = "Faible", "#16a34a"
+elif result["drift_mecroyance"] < 3:
+    label, color = "Modérée", "#ca8a04"
+elif result["drift_mecroyance"] < 6:
+    label, color = "Élevée", "#f97316"
+else:
+    label, color = "Très élevée", "#dc2626"
+
+render_custom_gauge(value, color)
+
+st.markdown(
+    f"<b style='color:{color}'>{label}</b> — {result['drift_mecroyance']}",
+    unsafe_allow_html=True
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown("""
+### Fermeture cognitive
+
+Cette jauge mesure un déséquilibre où la certitude affirmée dépasse le savoir articulé et la compréhension intégrée.
+
+Elle ne mesure pas :
+
+- le mensonge ;
+- la vérité du texte ;
+- l’intention réelle du locuteur.
+
+Elle mesure plutôt un risque de fermeture interprétative.
+""")
+
+    st.markdown("### Principe")
+
+    st.write(
+        "Le moteur compare le niveau de certitude au savoir disponible "
+        "et à la compréhension intégrée."
+    )
+
+    st.markdown("### Formule utilisée")
+
+    st.code("""
+Forme théorique :
+
+Fermeture cognitive = max(0, D - (G + N))
+
+Forme utilisée ici :
+
+Fermeture cognitive = max(
+    0,
+    D - (G_drift + N)
+)
+
+G_drift = G × 0.5
+""")
+
+    st.markdown("### Avec les valeurs actuelles")
+
+    st.write(
+        f"D = {result['D_drift']:.2f} | "
+        f"G_drift = {result['G_drift']:.2f} | "
+        f"N = {result['N_drift']:.2f}"
+    )
+
+    st.code(
+        f"max(0, {result['D_drift']:.2f} - "
+        f"({result['G_drift']:.2f} + {result['N_drift']:.2f})) "
+        f"= {result['drift_mecroyance']:.2f}"
+    )
+
+    st.markdown("### Couleurs")
+
+    st.write(
+        "🟢 Faible — équilibre préservé\n\n"
+        "🟡 Modérée — certitude légèrement dominante\n\n"
+        "🟠 Élevée — fermeture interprétative notable\n\n"
+        "🔴 Très élevée — certitude nettement supérieure au savoir disponible"
+    )
+
+    st.markdown("### Lecture")
+
+    st.write(
+        "Plus ce score est élevé, plus le discours affirme avec certitude "
+        "alors que les bases de savoir et de compréhension restent limitées."
+    )
+
+    st.markdown("### Normalisation graphique")
+
+    st.code("value = min(drift_mecroyance / 10, 1.0)")
+
+    st.markdown("### Attention")
+
+    st.write(
+        "Un score élevé ne signifie pas que le texte est faux.\n\n"
+        "Il indique seulement qu’une certitude semble dépasser "
+        "le savoir disponible et son intégration."
+    )
+
+st.divider()
+
+# -----------------------------
+# Indice global de dérive cognitive
+# -----------------------------
+st.markdown("### Indice global de dérive cognitive")
+st.caption("Synthèse des trois dérives cognitives.")
+
+global_score = result["global_cognitive_drift"]
+global_value = min(global_score / 10, 1.0)
+
+if global_score < 1:
+    global_label, global_color = "Faible", "#16a34a"
+elif global_score < 3:
+    global_label, global_color = "Modérée", "#ca8a04"
+elif global_score < 6:
+    global_label, global_color = "Élevée", "#f97316"
+else:
+    global_label, global_color = "Très élevée", "#dc2626"
+
+render_custom_gauge(global_value, global_color)
+
+st.markdown(
+    f"<b style='color:{global_color}'>{global_label}</b> — {global_score}",
+    unsafe_allow_html=True
+)
+
+st.caption(result["cognitive_drift_interpretation"])
+
+
+with st.popover("ℹ️ Comprendre cette jauge", use_container_width=True):
+
+    st.markdown(f"""
+### Indice global de dérive cognitive
+
+Cette jauge synthétise les trois dérives cognitives fondamentales.
+
+Elle ne dit pas si le texte est vrai ou faux :
+elle mesure le degré de déséquilibre entre savoir,
+compréhension et certitude.
+
+---
+
+### Principe
+
+Le moteur combine trois dérives :
+
+- fermeture cognitive ;
+- pseudo-savoir ;
+- intuition dogmatique.
+
+L’indice final donne davantage de poids à la dérive dominante afin d’éviter qu’un signal fort soit noyé dans la moyenne.
+
+---
+
+### Formule fondatrice
+
+Forme théorique :
+
+M = (G + N) − D
+
+Forme utilisée ici :
+
+M = (G_drift + N) − D
+
+avec :
+
+G_drift = G × 0.5
+
+afin d’éviter qu’un savoir fortement présent domine mécaniquement les autres dimensions.
+
+---
+
+### Dérives utilisées
+
+Fermeture cognitive = max(0, -M)
+
+Pseudo-savoir = max(0, (G_drift + D) - N)
+
+Intuition dogmatique = max(0, (N + D) - G_drift)
+
+---
+
+### Formule utilisée
+
+dominant_value = max(
+    fermeture,
+    pseudo_savoir,
+    intuition
+)
+
+average_value = (
+    fermeture
+    + pseudo_savoir
+    + intuition
+) / 3
+
+global_drift = (
+    dominant_value * 0.60
+) + (
+    average_value * 0.40)
+
+---
+
+### Valeurs actuelles
+
+Fermeture cognitive :
+{result['drift_mecroyance']:.2f}
+
+Pseudo-savoir :
+{result['drift_pseudo_savoir']:.2f}
+
+Intuition dogmatique :
+{result['drift_intuition_dogmatique']:.2f}
+
+---
+
+### Résultat actuel
+
+Score :
+{global_score:.2f}
+
+Niveau :
+{global_label}
+
+{result["cognitive_drift_interpretation"]}
+
+---
+
+### Couleurs
+
+🟢 Vert — Faible  
+Les dimensions restent relativement équilibrées.
+
+🟡 Jaune — Modérée  
+Une dérive commence à structurer le raisonnement.
+
+🟠 Orange — Élevée  
+Une logique cognitive domine nettement l’équilibre général.
+
+🔴 Rouge — Très élevée  
+Une forme cognitive semble fortement surdéterminer le discours.
+
+---
+
+### Lecture
+
+🟢 Faible : équilibre global conservé
+
+🟡 Modérée : dérive émergente
+
+🟠 Élevée : déséquilibre notable
+
+🔴 Très élevée : dérive dominante
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que le texte est faux.
+
+Il indique seulement qu’une forme de déséquilibre entre savoir,
+compréhension et certitude semble dominer la structure du discours.
+
+---
+
+### Échelle
+
+🟢 Faible < 1.5
+
+🟡 Modérée < 3.5
+
+🟠 Élevée < 6
+
+🔴 Très élevée ≥ 6
 """)
 
 st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
 ────────── ✦ ──────────
 </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) 
 
+# =============================
+# 🧠 LECTURE DES INTENTIONS COGNITIVES
+# =============================
 
+st.markdown(
+    """
+<div style="text-align:center; margin-top:10px; margin-bottom:20px;">
+
+<h3 style="margin-bottom:8px;">
+🧠 Lecture des intentions cognitives
+</h3>
+
+<div style="color:#888; font-size:0.95rem;">
+
+Mécroyance ⟵⟶ Manipulation<br>
+Démonstration explicite ⟵⟶ Impression de maîtrise
+
+</div>
+
+</div>
+""",
+    unsafe_allow_html=True
+)
 # =============================
 # Calculs mécroyance / mensonge
 # =============================
@@ -11931,7 +13169,459 @@ La certitude paraît plus forte que les preuves disponibles, mais les signaux ne
     
 else:
     pass
-    
+
+# =============================
+# Indice de baratinage
+# =============================
+
+st.subheader("Indice de baratinage")
+
+st.caption(
+    "Cette jauge n’évalue pas si le texte est vrai ou faux. "
+    "Elle estime l’écart entre l’impression de maîtrise produite "
+    "par le discours et la démonstration réellement visible."
+)
+
+value = result.get("baratinage_score", 0)
+
+render_custom_gauge(
+    value,
+    result.get("baratinage_color", "#22c55e")
+)
+
+st.markdown(
+    f"""
+<b style='color:{result.get("baratinage_color", "#22c55e")}'>
+{result.get("baratinage_label", "Faible")}
+</b>
+— {round(value*100,1)}%
+""",
+    unsafe_allow_html=True
+)
+
+st.caption(
+    result.get(
+        "baratinage_interpretation",
+        "Indice de baratinage non calculé."
+    )
+)
+
+st.caption(
+    "Démonstration explicite ⟵⟶ Impression de maîtrise"
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown("""
+### Indice de baratinage
+
+Cette jauge estime dans quelle mesure un discours produit une **impression de maîtrise, de profondeur ou d’autorité** supérieure à ce que sa démonstration explicite semble soutenir.
+
+Elle ne mesure pas :
+- la vérité du texte ;
+- le mensonge ;
+- l’intention réelle du locuteur.
+
+Elle mesure plutôt un **écart entre effet discursif et fondation démonstrative**.
+
+---
+
+### Principe
+
+Le moteur compare les facteurs qui augmentent l’effet de maîtrise :
+
+- certitude forte ;
+- cohérence apparente ;
+- densité argumentative ;
+- intensité rhétorique ;
+- abstraction ;
+- clôture cognitive.
+
+Avec les facteurs qui le réduisent :
+
+- preuves ;
+- ancrage au réel ;
+- reconnaissance des limites ;
+- révisabilité ;
+- précision ;
+- explicitation du raisonnement.
+
+---
+
+### Formule utilisée
+
+```python
+IB_heuristique = (
+    CF + CE + ACE + RP + NP + PI + CS
+) - (
+    HF + AR + RV + BC + AS + AN
+)
+
+IB_doxa = (G + 2D) - N
+
+IB = IB_heuristique + (IB_doxa * 0.15)
+
+score = max(0.0, min(IB / 6, 1.0))
+
+- **CE** = cohérence trompeuse  
+- **ACE** = cohérence trompeuse avancée  
+- **RP** = pression rhétorique  
+- **NP** = pression narrative  
+- **PI** = prémisses implicites  
+- **CS** = certitude générale  
+
+- **HF** = score factuel disponible  
+- **BC** = bonus de cohérence  
+- **AS** = arguments de soutien  
+- **AN** = nuances argumentatives
+
+### Lecture
+
+🟢 **Faible** : démonstration dominante  
+🟡 **Modéré** : rhétorique présente mais contenue  
+🟠 **Élevé** : effet de maîtrise notable  
+🔴 **Très élevé** : impression de maîtrise nettement supérieure à la démonstration
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que le texte est faux ou que l’auteur ment.
+
+Il indique seulement que la force perçue du discours semble davantage venir de sa forme que de sa démonstration explicite.
+""")
+
+# =============================
+# Indice d’omission stratégique
+# =============================
+
+st.subheader("Indice d’omission stratégique")
+
+st.caption(
+    "Cette jauge n’affirme pas qu’un mensonge par omission existe. "
+    "Elle estime si le discours semble sélectionner certains éléments "
+    "au détriment du contexte utile."
+)
+
+value = result.get("omission_score", 0)
+
+render_custom_gauge(
+    value,
+    result.get("omission_color", "#22c55e")
+)
+
+st.markdown(
+    f"""
+<b style='color:{result.get("omission_color", "#22c55e")}'>
+{result.get("omission_label", "Faible")}
+</b>
+— {round(value*100,1)}%
+""",
+    unsafe_allow_html=True
+)
+
+st.caption(
+    result.get(
+        "omission_interpretation",
+        "Indice d’omission stratégique non calculé."
+    )
+)
+
+st.caption(
+    "Contexte explicite ⟵⟶ Sélectivité discursive"
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown("""
+### Indice d’omission stratégique
+
+Cette jauge estime dans quelle mesure un discours semble **sélectionner certains éléments** tout en laissant hors champ des informations susceptibles de modifier l’interprétation globale.
+
+Elle ne mesure pas :
+
+- le mensonge ;
+- l’intention réelle du locuteur ;
+- la quantité absolue d’informations disponibles.
+
+Elle mesure plutôt un **risque de sélectivité discursive**.
+
+---
+
+### Principe
+
+Le moteur compare les facteurs qui augmentent l’indice :
+
+- cherry picking ;
+- données sans référentiel ;
+- manipulation statistique ;
+- prémisses implicites ;
+- asymétrie argumentative ;
+- certitude forte ;
+- clôture cognitive.
+
+Avec les facteurs qui le réduisent :
+
+- reconnaissance des limites ;
+- révisabilité ;
+- ancrage au réel ;
+- précision ;
+- présence de contre-arguments.
+
+---
+
+### Formule utilisée
+
+```python
+MO_heuristique = (
+    CP
+    + (DR * 1.5)
+    + PI
+    + AA
+    + CF
+    + CC
+    + (MS * 0.35)
+) - (
+    LM + RV + AR + PX + CA
+)
+
+MO_doxa = (G + D) - (2 * N)
+
+MO = MO_heuristique + (MO_doxa * 0.15)
+
+score = max(0.0, min(MO / 12, 1.0))
+```
+
+Où :
+
+- **CP** = cherry picking  
+- **DR** = données sans référentiel  
+- **PI** = prémisses implicites  
+- **AA** = asymétrie argumentative  
+- **CF** = certitude forte  
+- **CC** = clôture cognitive
+- **MS** = manipulation statistique
+
+Et :
+
+- **LM** = reconnaissance des limites  
+- **RV** = révisabilité  
+- **AR** = ancrage au réel  
+- **PX** = précision  
+- **CA** = contre-arguments  
+
+Modulation DOXA :
+
+- **G** = savoir articulé, approximé ici par le score factuel disponible  
+- **D** = certitude  
+- **N** = compréhension intégrée, approximée par l’ancrage et la révisabilité  
+
+---
+
+### Couleurs
+
+🟢 **Vert — Faible**  
+Le contexte paraît relativement complet.
+
+🟡 **Jaune — Modéré**  
+Quelques éléments semblent peu contextualisés.
+
+🟠 **Orange — Élevé**  
+Le discours paraît sélectionner certains éléments au détriment du contexte.
+
+🔴 **Rouge — Très élevé**  
+Le discours semble fortement orienté par sélection du contexte.
+
+---
+
+### Lecture
+
+🟢 **Faible (0–14.9%)** : contexte relativement complet  
+🟡 **Modéré (15–34.9%)** : éléments partiellement contextualisés  
+🟠 **Élevé (35–64.9%)** : sélection discursive notable  
+🔴 **Très élevé (65–100%)** : forte orientation par sélection du contexte
+
+---
+
+### Attention
+
+Un score élevé ne prouve pas qu’une information a été volontairement cachée.
+
+Il indique seulement que le discours semble laisser hors champ des éléments pouvant modifier son interprétation.
+""")
+
+# =============================
+# Effet placebo étendu
+# =============================
+
+st.subheader("Effet placebo étendu")
+
+st.caption(
+    "Cette jauge n’affirme pas qu’un effet placebo existe réellement. "
+    "Elle estime si le discours transforme une expérience vécue ou ressentie "
+    "en preuve subjective auto-validante."
+)
+
+value = result.get("extended_placebo_score", 0)
+
+render_custom_gauge(
+    value,
+    result.get("extended_placebo_color", "#22c55e")
+)
+
+st.markdown(
+    f"""
+<b style='color:{result.get("extended_placebo_color", "#22c55e")}'>
+{result.get("extended_placebo_label", "Faible")}
+</b>
+— {round(value*100,1)}%
+""",
+    unsafe_allow_html=True
+)
+
+st.caption(
+    result.get(
+        "extended_placebo_interpretation",
+        "Effet placebo étendu non calculé."
+    )
+)
+
+st.caption(
+    "Expérience prudente ⟵⟶ Conviction auto-validée"
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown("""
+### Effet placebo étendu
+
+Cette jauge estime dans quelle mesure un discours semble **transformer une expérience vécue, ressentie ou perçue comme efficace** en preuve subjective.
+
+Elle ne mesure pas :
+- l’effet placebo médical au sens strict ;
+- la vérité ou la fausseté de l’expérience ;
+- l’intention réelle du locuteur.
+
+Elle mesure plutôt un **risque d’auto-validation expérientielle**.
+
+---
+
+### Principe
+
+Le moteur combine :
+
+- une formule théorique de mécroyance expérientielle ;
+- une formule heuristique ;
+- un garde-fou d’expérience auto-validante (**EX**).
+
+Les facteurs qui augmentent l’indice sont :
+
+- certitude forte ;
+- prémisses implicites ;
+- cohérence trompeuse ;
+- cohérence trompeuse avancée ;
+- causalité abusive ;
+- pression ou surdétermination narrative.
+
+Les facteurs qui le réduisent sont :
+
+- ancrage au réel ;
+- révisabilité ;
+- bonus de cohérence ;
+- contre-arguments ;
+- score factuel disponible.
+
+---
+
+### Formule utilisée
+
+```python
+EX = max(
+    surinterpretation_factuelle,
+    auto_validation_narrative,
+    fausse_causalite,
+    causalite_abusive
+)
+
+M_placebo = ((N + 2D) - G) * EX
+
+EP_heuristique = (
+    CF + PI + CT + ACT + SC + ND
+) - (
+    AR + RV + BC + CA + HF
+)
+score_theorique = max(0.0, min(M_placebo, 1.0))
+
+score_heuristique = max(
+    0.0,
+    min((EP_heuristique / 4) * max(EX, 0.25), 1.0)
+)
+
+score = (
+    score_theorique * 0.60
+) + (
+    score_heuristique * 0.40
+)
+```
+
+Où :
+
+- **EX** = expérience auto-validante / surinterprétation vécue  
+- **N** = expérience intégrée, approximée par l’ancrage, la cohérence et la révisabilité  
+- **D** = certitude  
+- **G** = savoir articulé, approximé par le score factuel disponible  
+
+Et :
+
+- **CF** = certitude forte  
+- **PI** = prémisses implicites  
+- **CT** = cohérence trompeuse  
+- **ACT** = cohérence trompeuse avancée  
+- **SC** = causalité simplifiée / abusive  
+- **ND** = pression ou surdétermination narrative  
+
+Facteurs correcteurs :
+
+- **AR** = ancrage au réel  
+- **RV** = révisabilité  
+- **BC** = bonus de cohérence  
+- **CA** = contre-arguments  
+- **HF** = score factuel disponible  
+
+---
+
+### Couleurs
+
+🟢 **Vert — Faible**  
+L’expérience reste prudente et ne devient pas une preuve suffisante.
+
+🟡 **Jaune — Modéré**  
+Le vécu commence à soutenir la conviction.
+
+🟠 **Orange — Élevé**  
+Le ressenti sert fortement de validation subjective.
+
+🔴 **Rouge — Très élevé**  
+L’expérience semble devenir une preuve auto-validée peu révisable.
+
+---
+
+### Lecture
+
+🟢 **Faible** : expérience prudente  
+🟡 **Modéré** : validation partielle par le ressenti  
+🟠 **Élevé** : vécu fortement utilisé comme preuve  
+🔴 **Très élevé** : certitude auto-validée par l’expérience  
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que l’expérience est fausse.
+
+Il indique seulement que le discours semble attribuer au vécu une valeur démonstrative supérieure au savoir disponible.
+""")
+
 st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
 ────────── ✦ ──────────
@@ -11946,7 +13636,7 @@ st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
 ────────── ✦ ──────────
 </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)    
 
 
 # =============================
@@ -12826,275 +14516,14 @@ with col_center:
     fig_triangle = plot_cognitive_triangle_3d(result["G"], result["N"], result["D"])
     st.pyplot(fig_triangle, use_container_width=True)
 
-    # =============================
-    # 🧠 1. DÉRIVES COGNITIVES FONDAMENTALES
-    # =============================
-    st.subheader("🧠 Dérives cognitives fondamentales")
-    st.caption("Dérives internes du raisonnement liées à l’équilibre entre connaissance (G), compréhension (N) et certitude (D).")
-    
 
-    # -----------------------------
-    # Pseudo-savoir
-    # -----------------------------
-    st.markdown("### Pseudo-savoir")
-    st.caption("Accumulation de savoirs mal intégrés ou mal compris.")
+st.divider()
 
-    value = min(result["drift_pseudo_savoir"] / 10, 1.0)
-
-    if result["drift_pseudo_savoir"] < 1:
-        label, color = "Faible", "#16a34a"
-    elif result["drift_pseudo_savoir"] < 3:
-        label, color = "Modérée", "#ca8a04"
-    elif result["drift_pseudo_savoir"] < 6:
-        label, color = "Élevée", "#f97316"
-    else:
-        label, color = "Très élevée", "#dc2626"
-
-    render_custom_gauge(value, color)
-
-    st.markdown(
-        f"<b style='color:{color}'>{label}</b> — {result['drift_pseudo_savoir']}",
-        unsafe_allow_html=True
-    )
-
-    with st.popover("ℹ️ Comprendre cette jauge"):
-        st.markdown("### Pseudo-savoir")
-
-        st.write(
-            "Cette jauge mesure un déséquilibre où le texte accumule du savoir apparent "
-            "ou des éléments de connaissance, mais sans compréhension suffisamment intégrée."
-        )
-
-        st.markdown("**Formule utilisée**")
-        st.code("Pseudo-savoir = max(0, (G + D) - N)")
-
-        st.markdown("**Avec les valeurs actuelles**")
-        st.write(
-            f"G = {result['G']:.2f} | "
-            f"D = {result['D']:.2f} | "
-            f"N = {result['N']:.2f}"
-        )
-
-        st.code(
-            f"max(0, ({result['G']:.2f} + {result['D']:.2f}) - {result['N']:.2f}) "
-            f"= {result['drift_pseudo_savoir']:.2f}"
-        )
-
-        st.markdown("**Interprétation**")
-        st.write(
-            "Plus ce score est élevé, plus le texte donne une impression de savoir "
-            "sans que ce savoir soit suffisamment digéré, relié ou compris."
-        )
-
-        st.markdown("**Normalisation graphique**")
-        st.code("value = min(drift_pseudo_savoir / 10, 1.0)")
-    
-    st.divider()
-
-    # -----------------------------
-    # Intuition dogmatique
-    # -----------------------------
-    st.markdown("### Intuition dogmatique")
-    st.caption("Conviction forte sans base de savoir suffisante.")
-
-    value = min(result["drift_intuition_dogmatique"] / 10, 1.0)
-
-    if result["drift_intuition_dogmatique"] < 1:
-        label, color = "Faible", "#16a34a"
-    elif result["drift_intuition_dogmatique"] < 3:
-        label, color = "Modérée", "#ca8a04"
-    elif result["drift_intuition_dogmatique"] < 6:
-        label, color = "Élevée", "#f97316"
-    else:
-        label, color = "Très élevée", "#dc2626"
-
-    render_custom_gauge(value, color)
-
-    st.markdown(
-        f"<b style='color:{color}'>{label}</b> — {result['drift_intuition_dogmatique']}",
-        unsafe_allow_html=True
-    )
-
-    with st.popover("ℹ️ Comprendre cette jauge"):
-        st.markdown("### Intuition dogmatique")
-
-        st.write(
-            "Cette jauge mesure un déséquilibre où l’intuition ou la compréhension apparente "
-            "s’allie à une certitude forte, mais sans base de savoir suffisamment articulée."
-        )
-
-        st.markdown("**Formule utilisée**")
-        st.code("Intuition dogmatique = max(0, (N + D) - G)")
-
-        st.markdown("**Avec les valeurs actuelles**")
-        st.write(
-            f"N = {result['N']:.2f} | "
-            f"D = {result['D']:.2f} | "
-            f"G = {result['G']:.2f}"
-        )
-
-        st.code(
-            f"max(0, ({result['N']:.2f} + {result['D']:.2f}) - {result['G']:.2f}) "
-            f"= {result['drift_intuition_dogmatique']:.2f}"
-        )
-
-        st.markdown("**Interprétation**")
-        st.write(
-            "Plus ce score est élevé, plus le texte semble reposer sur une intuition affirmée "
-            "ou une compréhension subjective, mais insuffisamment soutenue par des éléments de savoir."
-        )
-
-        st.markdown("**Normalisation graphique**")
-        st.code("value = min(drift_intuition_dogmatique / 10, 1.0)")
-
-
-    st.divider()
-
-    # -----------------------------
-    # Fermeture cognitive
-    # -----------------------------
-    st.markdown("### Fermeture cognitive")
-    st.caption("Excès de certitude par rapport au savoir et à la compréhension.")
-
-    value = min(result["drift_mecroyance"] / 10, 1.0)
-
-    if result["drift_mecroyance"] < 1:
-        label, color = "Faible", "#16a34a"
-    elif result["drift_mecroyance"] < 3:
-        label, color = "Modérée", "#ca8a04"
-    elif result["drift_mecroyance"] < 6:
-        label, color = "Élevée", "#f97316"
-    else:
-        label, color = "Très élevée", "#dc2626"
-
-    render_custom_gauge(value, color)
-
-    st.markdown(
-        f"<b style='color:{color}'>{label}</b> — {result['drift_mecroyance']}",
-        unsafe_allow_html=True
-    )
-
-    with st.popover("ℹ️ Comprendre cette jauge"):
-        st.markdown("### Fermeture cognitive")
-
-        st.write(
-            "Cette jauge mesure un déséquilibre où la certitude affirmée dépasse "
-            "le savoir articulé et la compréhension intégrée."
-        )
-
-        st.markdown("**Formule utilisée**")
-        st.code("Fermeture cognitive = max(0, D - (G + N))")
-
-        st.markdown("**Avec les valeurs actuelles**")
-        st.write(
-            f"D = {result['D']:.2f} | "
-            f"G = {result['G']:.2f} | "
-            f"N = {result['N']:.2f}"
-        )
-
-        st.code(
-            f"max(0, {result['D']:.2f} - ({result['G']:.2f} + {result['N']:.2f})) "
-            f"= {result['drift_mecroyance']:.2f}"
-        )
-
-        st.markdown("**Interprétation**")
-        st.write(
-            "Plus ce score est élevé, plus le texte affirme avec certitude alors que "
-            "les bases de savoir et de compréhension restent insuffisantes."
-        )
-
-        st.markdown("**Normalisation graphique**")
-        st.code("value = min(drift_mecroyance / 10, 1.0)")
-
-    st.divider()
-
-    # -----------------------------
-    # Indice global de dérive cognitive
-    # -----------------------------
-    st.markdown("### Indice global de dérive cognitive")
-    st.caption("Synthèse des trois dérives cognitives.")
-    
-    global_score = result["global_cognitive_drift"]
-    global_value = min(global_score / 10, 1.0)
-    
-    if global_score < 1:
-        global_label, global_color = "Faible", "#16a34a"
-    elif global_score < 3:
-        global_label, global_color = "Modérée", "#ca8a04"
-    elif global_score < 6:
-        global_label, global_color = "Élevée", "#f97316"
-    else:
-        global_label, global_color = "Très élevée", "#dc2626"
-    
-    render_custom_gauge(global_value, global_color)
-    
-    st.markdown(
-        f"<b style='color:{global_color}'>{global_label}</b> — {global_score}",
-        unsafe_allow_html=True
-    )
-    
-    st.caption(result["cognitive_drift_interpretation"])
-    
-    
-    with st.popover("ℹ️ Comprendre cette jauge", use_container_width=True):
-        st.markdown("### Indice global de dérive cognitive")
-    
-        st.write(
-            "Cette jauge synthétise les trois dérives cognitives fondamentales. "
-            "Elle ne dit pas si le texte est vrai ou faux : elle mesure le degré de déséquilibre "
-            "entre savoir, compréhension et certitude."
-        )
-    
-        st.markdown("**Formule fondatrice**")
-        st.code("M = (G + N) - D")
-    
-        st.markdown("**Dérives utilisées**")
-    
-        st.code("Fermeture cognitive = max(0, -M)")
-        st.code("Pseudo-savoir = max(0, (G + D) - N)")
-        st.code("Intuition dogmatique = max(0, (N + D) - G)")
-    
-        st.markdown("**Formule de synthèse**")
-        st.code(
-            "dominant_value = max(fermeture, pseudo_savoir, intuition)\n"
-            "average_value = (fermeture + pseudo_savoir + intuition) / 3\n"
-            "global_drift = dominant_value * 0.6 + average_value * 0.4"
-        )
-    
-        st.markdown("**Valeurs actuelles**")
-        st.write(
-            f"Fermeture cognitive = {result['drift_mecroyance']:.2f} | "
-            f"Pseudo-savoir = {result['drift_pseudo_savoir']:.2f} | "
-            f"Intuition dogmatique = {result['drift_intuition_dogmatique']:.2f}"
-        )
-    
-        st.code(
-            f"dominant_value = {max(result['drift_mecroyance'], result['drift_pseudo_savoir'], result['drift_intuition_dogmatique']):.2f}\n"
-            f"average_value = {((result['drift_mecroyance'] + result['drift_pseudo_savoir'] + result['drift_intuition_dogmatique']) / 3):.2f}\n"
-            f"global_drift = {global_score:.2f}"
-        )
-    
-        st.markdown("**Résultat actuel**")
-        st.write(f"Score : **{global_score:.2f}**")
-        st.write(f"Niveau : **{global_label}**")
-        st.write(result["cognitive_drift_interpretation"])
-    
-        st.markdown("**Lecture**")
-        st.write(
-            "Plus l’indice est élevé, plus une dérive cognitive domine la structure du texte. "
-            "Le poids de 60 % donné à la dérive dominante évite qu’un signal fort soit noyé "
-            "par deux signaux faibles."
-        )
-    
-        st.markdown("**Échelle**")
-        st.write("🟢 Faible < 1 | 🟡 Modérée < 3 | 🟠 Élevée < 6 | 🔴 Très élevée ≥ 6")
-        st.divider()
-
-        st.markdown("""
-    <div style="text-align:center; margin:25px 0; color:#888;">
-    ──── 🧠 ────
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown("""
+<div style="text-align:center; margin:25px 0; color:#888;">
+──── 🧠 ────
+</div>
+""", unsafe_allow_html=True)
 
 st.subheader("Cartographie discursive complémentaire")
 
@@ -14434,7 +15863,7 @@ st.markdown("""
 st.subheader("🧭 Orientation idéologique")
 st.caption("Détection des structures narratives orientées ou propagandistes.")
 
-oi1, oi2, oi3 = st.columns(3)
+oi1, oi2, oi3, oi4 = st.columns(4)
 
 with oi1:
     
@@ -14782,7 +16211,7 @@ with oi3:
             "Un score élevé ne signifie pas que le texte est faux. "
             "Il indique que le discours tend à construire un adversaire global, abstrait ou peu spécifié."
         )
-oi4, oi5, oi6 = st.columns(3)
+
 # -----------------------------
 # Dissonance interne
 # -----------------------------
@@ -14864,6 +16293,7 @@ with oi4:
             "Une dissonance interne élevée ne signifie pas que tout le texte est faux. "
             "Elle indique que certaines parties du discours semblent entrer en tension ou se contredire."
         )
+oi5, oi6, oi7, oi8 = st.columns(4)
 # -----------------------------
 # Polarisation morale
 # -----------------------------
@@ -15023,7 +16453,6 @@ with oi6:
             "Un faux consensus renforcé élevé ne signifie pas que l’idée est fausse. "
             "Il indique que le texte transforme un accord supposé en preuve argumentative."
         )
-oi7, oi8 = st.columns(2)
 
 # =============================
 # Argument de nature
@@ -16292,7 +17721,7 @@ with bf2:
     st.markdown("### Qualification normative")
     st.caption("Jugements de valeur présentés comme des faits.")
 
-    normative_value = result["normative_score"]
+    normative_value = result.get("normative_charge_score", 0)
 
     if normative_value < 0.20:
         normative_label, normative_color = "Faible", "#ca8a04"
