@@ -8196,6 +8196,41 @@ ENCYCLOPEDIC_MARKERS = [
     "refers to",
     "consists of",
 ]
+ENCYCLOPEDIC_MARKERS += [
+
+    # structure encyclopédique
+    "selon",
+    "selon les chercheurs",
+    "selon les historiens",
+    "on distingue",
+    "est considéré comme",
+    "est généralement considéré",
+    "fait l'objet de",
+    "est associé à",
+    "désigne également",
+    "dans la littérature",
+    "dans ce contexte",
+    "historiquement",
+    "au sens large",
+    "au sens strict",
+
+    # exposition
+    "comprend",
+    "inclut",
+    "regroupe",
+    "englobe",
+    "se caractérise",
+    "correspond aux",
+    "peut prendre plusieurs formes",
+
+    # neutralisation du pamphlet
+    "certains auteurs",
+    "plusieurs auteurs",
+    "certains considèrent",
+    "fait débat",
+    "fait référence",
+]
+
 # =========================================================
 # DÉFINITIONNEL / PÉDAGOGIQUE
 # =========================================================
@@ -8408,7 +8443,7 @@ def detect_conceptual_domains(text: str):
     
     for marker in JOURNALISTIC_MARKERS:
         if contains_term(t, marker):
-            domains["journalistique"] += 1
+            domains["journalistique"] += 1.25
             terms["journalistique"].append(marker)
 
     for marker in PHILOSOPHICAL_MARKERS:
@@ -13306,7 +13341,7 @@ st.markdown(
 st.caption(result["cognitive_drift_interpretation"])
 
 
-with st.popover("ℹ️ Comprendre cette jauge", use_container_width=True):
+with st.popover("ℹ️ Comprendre cette jauge"):
 
     st.markdown(f"""
 ### Indice global de dérive cognitive
@@ -13758,9 +13793,6 @@ Le texte contient une tension entre mécroyance et manipulation.
 
 La certitude paraît plus forte que les preuves disponibles, mais les signaux ne suffisent pas encore à conclure à une manipulation nette.
 """)
-    
-else:
-    pass
 
 # =============================
 # Indice de baratinage
