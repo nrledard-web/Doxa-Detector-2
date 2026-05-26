@@ -1534,70 +1534,57 @@ def interpret_closure_gauge(value: float):
         return "Clôture critique", "#dc2626", "Le texte semble fortement verrouillé par sa propre structure."
 
 def generate_share_block(result):
+    from urllib.parse import quote
 
-    credibility = result.get("hard_fact_score", 0)
+    cred_final = round(result.get("final_credibility_score", result.get("hard_fact_score", 0)), 1)
+    hard_fact = round(result.get("hard_fact_score", 0), 1)
 
-    gravity = result.get(
-        "cognitive_gravity",
-        0
-    )
+    M = round(result.get("M", result.get("G_drift", 0) + result.get("N", 0) - result.get("D", 0)), 2)
 
-    stability = result.get(
-        "cognitive_stability",
-        0
-    )
+    global_drift = round(result.get("global_cognitive_drift", 0), 2)
+    closure = round(result.get("closure", 0), 2)
+    real_anchor = round(result.get("real_anchor_score", result.get("reality_anchor_score", 0)), 2)
 
-    regime = result.get(
-        "dominant_regime",
-        ""
-    )
+    baratinage = round(result.get("baratinage_score", 0) * 100, 1)
+    omission = round(result.get("omission_score", 0) * 100, 1)
+    placebo = round(result.get("extended_placebo_score", 0) * 100, 1)
 
+    regime = result.get("cognitive_regime", result.get("dominant_regime", "Non déterminé"))
     verdict = result.get(
-        "brain_verdict",
-        ""
+        "final_credibility_label",
+        result.get("verdict", "Non déterminé")
     )
 
-    # -----------------------------
-    # Red flags lisibles
-    # -----------------------------
-    flags_lines = []
+    flags = []
 
-    red_flags = result.get("red_flags", [])
-
-    if isinstance(red_flags, list):
-        for flag in red_flags:
-            if isinstance(flag, dict):
-                name = flag.get("name", "Signal détecté")
-                reason = flag.get("reason", "")
-                if reason:
-                    flags_lines.append(f"- {name} : {reason}")
+    penalty_details = result.get("penalty_details", {})
+    for group in penalty_details.values():
+        if isinstance(group, list):
+            for item in group:
+                if isinstance(item, dict):
+                    flags.append(item.get("name") or item.get("label") or str(item))
                 else:
-                    flags_lines.append(f"- {name}")
-            else:
-                flags_lines.append(f"- {flag}")
+                    flags.append(str(item))
 
-    # Catégories rhétoriques détectées
-    patterns = result.get("political_patterns", {})
+    flags = [f for f in flags if f]
+    flags_text = "\n".join(f"- {f}" for f in flags[:8]) if flags else "- Aucun signal majeur"
 
-    if isinstance(patterns, dict):
-        for name, count in patterns.items():
-            if count and count > 0:
-                clean_name = name.replace("_", " ").capitalize()
-                flags_lines.append(f"- {clean_name} ({count})")
+    summary = f"""Analyse DOXA Detector
 
-    if flags_lines:
-        flags_text = "\n".join(flags_lines[:12])
-    else:
-        flags_text = "Aucun signal rhétorique majeur détecté"
+Crédibilité finale : {cred_final}/20
+Solidité argumentative brute : {hard_fact}/20
 
-    summary = f"""
-Analyse DOXA Detector
+Mécroyance (M) : {M}
+Dérive cognitive globale : {global_drift}
+Clôture cognitive : {closure}
+Ancrage au réel : {real_anchor}/20
 
-Crédibilité : {credibility}/20
-Gravité cognitive : {gravity}
-Stabilité cognitive : {stability}
+Baratinage : {baratinage}%
+Omission stratégique : {omission}%
+Effet placebo étendu : {placebo}%
 
-Régime dominant : {regime}
+Régime dominant :
+{regime}
 
 Verdict :
 {verdict}
@@ -1611,8 +1598,7 @@ https://doxa-detector-fr-krsbrtpqc6kucpdg9bfgv2.streamlit.app/
 M = (G + N) − D
 """
 
-    encoded = urllib.parse.quote(summary)
-
+    encoded = quote(summary)
     return summary, encoded
 
 def render_custom_gauge(value: float, color: str):
@@ -3506,7 +3492,6 @@ ATTACK_TERMS += [
     "agitent le chiffon rouge",
     "chiffon rouge",
 ]
-
 FRAME_SHIFT_TERMS += [
     "ce n'est pas pour autant",
     "ce n’est pas pour autant",
@@ -11730,7 +11715,7 @@ if analyze_submitted:
             "Veuillez saisir une affirmation plus développée."
         )
         st.stop()
-        
+    
     # =====================================================
     # Vérification : page web parasite
     # =====================================================
@@ -11766,13 +11751,15 @@ article_for_analysis = st.session_state.get("last_article", "")
 if not result:
     st.stop()
 
+
+
 # =====================================================
 # AIDE DE LECTURE DES JAUGES
 # =====================================================
 
-    def show_gauge_help():
-        with st.expander("📘 Comment lire les jauges", expanded=False):
-            st.markdown("""
+def show_gauge_help():
+    with st.expander("📘 Comment lire les jauges", expanded=False):
+        st.markdown("""
 Chaque jauge mesure un mécanisme du discours : raisonnement, pression rhétorique, biais argumentatifs ou degré de certitude.
 
 Les jauges n’indiquent pas si un texte est vrai ou faux, mais **la solidité de sa structure cognitive**.
@@ -12350,6 +12337,320 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# =============================
+# Ancrage au réel
+# =============================
+
+st.markdown("──── 🧪 ────")
+st.subheader("Ancrage au réel")
+
+st.caption(
+    "Cette jauge mesure dans quelle mesure le discours reste contraint "
+    "par l’expérience, la reproductibilité, la falsifiabilité et "
+    "la reconnaissance explicite de ses limites."
+)
+
+anchor_score = result.get("real_anchor_score", 0)
+anchor_label = result.get("real_anchor_label", "Non calculé")
+anchor_text = result.get("real_anchor_interpretation", "")
+
+if anchor_score < 3:
+    anchor_color = "#7f1d1d"   # rouge sombre
+    anchor_label = "Très faible"
+
+elif anchor_score < 7:
+    anchor_color = "#b45309"   # cuivre
+    anchor_label = "Fragile"
+
+elif anchor_score < 12:
+    anchor_color = "#a16207"   # ambre
+    anchor_label = "Modéré"
+
+elif anchor_score < 16:
+    anchor_color = "#57534e"   # pierre / neutre
+    anchor_label = "Fort"
+
+else:
+    anchor_color = "#334155"   # bleu acier
+    anchor_label = "Très fort"
+
+render_custom_gauge(anchor_score / 20, anchor_color)
+
+st.markdown(
+    f"<b style='color:{anchor_color}'>{anchor_label}</b> — {anchor_score}/20",
+    unsafe_allow_html=True
+)
+
+st.caption(anchor_text)
+
+st.caption("Spéculation libre ⟵⟶ Contrainte du réel")
+
+st.caption(
+    "Contrairement aux jauges morales classiques, cette palette ne récompense "
+    "pas une supposée vérité. Elle visualise la tension entre spéculation libre "
+    "et contrainte du réel. Les couleurs froides et minérales indiquent "
+    "une structure davantage stabilisée par l’expérience et la reproductibilité."
+)
+# -----------------------------
+# Tension réalité / cohérence
+# -----------------------------
+delta = result.get("delta_reality", 0)
+delta_label = result.get("delta_reality_label", "Non calculé")
+delta_text = result.get("delta_reality_interpretation", "")
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown(f"""
+### Ancrage au réel
+
+Cette jauge mesure dans quelle mesure le discours reste contraint par l’expérience, la reproductibilité, la falsifiabilité et la reconnaissance explicite de ses limites.
+
+Elle ne mesure pas :
+
+- la vérité absolue du texte ;
+- l’intention réelle du locuteur ;
+- la valeur morale du discours.
+
+Elle mesure plutôt le degré de **contrainte empirique** qui limite la spéculation libre.
+
+---
+
+### Principe
+
+Le moteur compare les éléments qui ancrent le discours dans le réel :
+
+- empirie ;
+- reproductibilité ;
+- falsifiabilité ;
+- reconnaissance des limites.
+
+Avec les éléments qui l’éloignent du réel :
+
+- spéculation extrapolative ;
+- certitude excessive ;
+- cohérence autoporteuse.
+
+---
+
+### Composantes de l’ancrage
+
+Empirie :
+**{result.get("real_anchor_E", 0)}**
+
+Reproductibilité :
+**{result.get("real_anchor_R", 0)}**
+
+Falsifiabilité :
+**{result.get("real_anchor_F", 0)}**
+
+Limites explicites :
+**{result.get("real_anchor_L", 0)}**
+
+Spéculation :
+**{result.get("real_anchor_S", 0)}**
+
+---
+
+### Tension réalité / cohérence
+
+{delta_label} — Δ = **{delta}**
+
+{delta_text}
+
+---
+
+### Couleurs
+
+🔴 **Très faible**  
+Le discours est très peu contraint par l’expérience ou la vérification.
+
+🟠 **Fragile**  
+Quelques éléments d’ancrage existent, mais la spéculation ou l’affirmation dominent.
+
+🟡 **Modéré**  
+Le discours présente un ancrage partiel au réel.
+
+⚪ **Fort**  
+Le discours est relativement stabilisé par l’expérience et les limites reconnues.
+
+🔵 **Très fort**  
+Le discours est fortement contraint par l’expérience, la reproductibilité ou la falsifiabilité.
+
+---
+
+### Lecture
+
+Spéculation libre ⟵⟶ Contrainte du réel
+
+Plus le score monte, plus le discours semble contraint par des éléments vérifiables, reproductibles ou falsifiables.
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que le texte est vrai.
+
+Il indique seulement que le discours semble davantage stabilisé par l’expérience, la vérifiabilité et la reconnaissance de ses limites.
+""")
+
+    st.markdown("### Marqueurs d’ancrage")
+
+    st.write(
+        "**Empirie :**",
+        result.get("real_anchor_empirical_markers", [])
+    )
+
+    st.write(
+        "**Reproductibilité :**",
+        result.get("real_anchor_reproducibility_markers", [])
+    )
+
+    st.write(
+        "**Falsifiabilité :**",
+        result.get("real_anchor_falsifiability_markers", [])
+    )
+
+    st.write(
+        "**Limites explicites :**",
+        result.get("real_anchor_limits_markers", [])
+    )
+
+    st.write(
+        "**Spéculation extrapolative :**",
+        result.get("real_anchor_speculation_markers", [])
+    )
+
+# =============================
+# 🧠 Structure cognitive du texte
+# =============================
+
+st.subheader("🧠 Structure cognitive du texte")
+
+st.caption(
+    "Vue synthétique des équilibres entre savoir, compréhension, certitude et révisabilité."
+)
+
+cog = Cognition(result["G"], result["N"], result["D"])
+
+overconfidence = result["D"] - (result["G"] + result["N"])
+
+calibration = (
+    result["D"] /
+    (result["G"] + result["N"])
+    if (result["G"] + result["N"]) > 0
+    else 10
+)
+
+revisability = (
+    result["G"]
+    + result["N"]
+    + result["V"]
+    - result["D"]
+)
+
+closure = result.get("closure", 0)
+
+with st.popover("📊 Voir les métriques cognitives"):
+
+    c1, c2 = st.columns(2)
+
+    c1.metric(
+        T["overconfidence"],
+        round(overconfidence, 2)
+    )
+
+    c2.metric(
+        T["calibration"],
+        round(calibration, 2)
+    )
+
+    c3, c4 = st.columns(2)
+
+    c3.metric(
+        T["revisability"],
+        round(revisability, 2)
+    )
+
+    c4.metric(
+        T["cognitive_closure"],
+        round(closure, 2)
+    )
+
+with st.popover("ℹ️ Comprendre cette structure"):
+
+    st.markdown(f"""
+### Structure cognitive du texte
+
+Cette section présente les métriques fondamentales du modèle cognitif.
+
+Elle ne mesure pas :
+
+- la vérité absolue ;
+- le mensonge ;
+- l’intention du locuteur.
+
+Elle observe les rapports entre savoir, compréhension, certitude et capacité de révision.
+
+---
+
+### Formule fondatrice
+
+M = (G + N) - D
+
+Avec :
+
+- **G** → savoir articulé
+- **N** → compréhension intégrée
+- **D** → certitude / rigidité
+
+---
+
+### Métriques affichées
+
+Surconfiance = D - (G + N)
+
+Calibration = D / (G + N)
+
+Révisabilité = (G + N + V) - D
+
+Clôture cognitive = (D × S) / (G + N)
+
+Avec :
+
+- **V** = vérifiabilité
+- **S** = facteur de signalisation
+
+---
+
+### Valeurs actuelles
+
+Surconfiance :
+**{round(overconfidence, 2)}**
+
+Calibration :
+**{round(calibration, 2)}**
+
+Révisabilité :
+**{round(revisability, 2)}**
+
+Clôture cognitive :
+**{round(closure, 2)}**
+
+---
+
+### Attention
+
+Ces indicateurs décrivent une architecture cognitive.
+
+Ils ne déterminent ni la vérité ni la fausseté du texte.
+""")
+
+st.markdown("""
+<div style="text-align:center; margin:25px 0; color:#888;">
+────────── ✦ ──────────
+</div>
+""", unsafe_allow_html=True)
+
 
 # =============================
 # 🧠 1. DÉRIVES COGNITIVES FONDAMENTALES
@@ -12687,6 +12988,145 @@ G_drift = G × 0.5
 st.divider()
 
 # -----------------------------
+# 🧠 jauge de Clôture cognitive
+# -----------------------------
+st.subheader("Clôture cognitive")
+
+st.caption(
+    "Cette jauge mesure le degré de verrouillage cognitif du texte. "
+    "Plus elle monte, plus la certitude domine le savoir et l’intégration."
+)
+# -----------------------------
+# Calcul clôture cognitive
+# -----------------------------
+closure = round(
+    (
+        result.get("doxic_rigidity_score", 0) * 0.50
+        +
+        result.get("certainty_score", 0) * 0.30
+        +
+        result.get("strong_certainty_score", 0) * 0.20
+    )
+    -
+    (
+        result.get("bonus_revisability", 0) * 0.40
+        +
+        result.get("bonus_anchor", 0) * 0.20
+    ),
+    2
+)
+
+closure = max(0, closure)
+
+result["closure"] = closure
+
+closure_gauge = min(closure / 1.5, 1.0)
+
+closure_label, closure_color, closure_text = interpret_closure_gauge(closure)
+
+render_custom_gauge(closure_gauge, closure_color)
+
+st.markdown(
+    f"<b style='color:{closure_color}'>{closure_label}</b> — {round(closure, 2)}",
+    unsafe_allow_html=True
+)
+
+st.caption("Ouverture cognitive ⟵⟶ Clôture cognitive")
+
+st.caption(closure_text)
+
+st.markdown(
+    f"**{T.get('interpretation', 'Interprétation')} :** "
+    f"{result.get('closure_interpretation', closure_text)}"
+)
+
+with st.popover("ℹ️ Comprendre cette jauge"):
+
+    st.markdown(f"""
+### Clôture cognitive
+
+Cette jauge estime dans quelle mesure un texte semble se refermer sur sa propre certitude.
+
+Elle ne mesure pas :
+
+- la vérité absolue du texte ;
+- le mensonge ;
+- l’intention réelle du locuteur.
+
+Elle mesure plutôt un **risque de verrouillage cognitif** : le moment où la certitude domine le savoir articulé et la compréhension intégrée.
+
+---
+
+### Principe
+
+Le moteur observe la tension entre :
+
+- le savoir disponible ;
+- la compréhension intégrée ;
+- le niveau de certitude ;
+- la capacité du discours à rester révisable.
+
+Plus la clôture monte, plus le texte semble difficile à corriger, nuancer ou réviser.
+La clôture cognitive est affichée séparément comme indicateur transversal de révisabilité du discours et n’entre pas directement dans le calcul de cet indice.
+---
+
+### Formule utilisée
+
+closure = degré de clôture cognitive calculé par le modèle cognitif
+
+closure_gauge = min(closure / 1.5, 1.0)
+
+---
+
+### Valeur actuelle
+
+Clôture cognitive :
+
+**{round(closure, 2)}**
+
+Valeur normalisée de la jauge :
+
+**{round(closure_gauge * 100, 1)}%**
+
+Interprétation :
+
+**{closure_label}**
+
+---
+
+### Couleurs
+
+🟢 **Vert — Ouverture cognitive**  
+Le texte reste révisable, nuancé ou ouvert à la correction.
+
+🟡 **Jaune — Tension cognitive**  
+Certaines certitudes apparaissent, mais sans verrouillage dominant.
+
+🟠 **Orange — Clôture partielle**  
+La certitude commence à limiter la révisabilité du discours.
+
+🔴 **Rouge — Clôture forte**  
+La certitude semble dominer le savoir et la compréhension intégrée.
+
+---
+
+### Lecture
+
+🟢 **Ouverture** : le doute structure encore la cognition  
+🟡 **Tension** : certitude présente mais encore révisable  
+🟠 **Clôture partielle** : réduction de la nuance  
+🔴 **Clôture forte** : verrouillage interprétatif dominant  
+
+---
+
+### Attention
+
+Un score élevé ne signifie pas que le texte est faux.
+
+Il indique seulement que le discours semble moins révisable, plus affirmatif, ou davantage fermé à la correction.
+""")
+    
+# -----------------------------
 # Indice global de dérive cognitive
 # -----------------------------
 st.markdown("### Indice global de dérive cognitive")
@@ -12729,13 +13169,13 @@ compréhension et certitude.
 
 ### Principe
 
-Le moteur combine trois dérives :
+Le moteur combine :
 
-- fermeture cognitive ;
-- pseudo-savoir ;
-- intuition dogmatique.
+- la fermeture cognitive ;
+- le pseudo-savoir ;
+- l’intuition dogmatique.
 
-L’indice final donne davantage de poids à la dérive dominante afin d’éviter qu’un signal fort soit noyé dans la moyenne.
+La clôture cognitive est affichée séparément comme indicateur transversal de révisabilité du discours et n’entre pas directement dans le calcul de cet indice.
 
 ---
 
@@ -12868,7 +13308,7 @@ st.markdown("""
 """, unsafe_allow_html=True) 
 
 # =============================
-# 🧠 LECTURE DES INTENTIONS COGNITIVES
+# 🧠 Jauge de mécroyance et des intentions cognitives
 # =============================
 
 st.markdown(
@@ -12876,7 +13316,7 @@ st.markdown(
 <div style="text-align:center; margin-top:10px; margin-bottom:20px;">
 
 <h3 style="margin-bottom:8px;">
-🧠 Lecture des intentions cognitives
+🧠 Jauge de mécroyance et des intentions cognitives
 </h3>
 
 <div style="color:#888; font-size:0.95rem;">
@@ -12922,9 +13362,9 @@ else:
 
 st.subheader(f"{emoji} Tension cognitive : {gauge_label}")
 st.caption(
-    "Cette jauge indique si le discours relève plutôt d’une erreur sincère "
-    "(mécroyance) ou d’une possible manipulation. "
-    "Plus la jauge progresse, plus la structure du texte se rapproche du mensonge."
+    "Cette jauge estime si le discours relève davantage d’une mécroyance "
+    "(erreur sincère) ou d’une dynamique pouvant suggérer une manipulation. "
+    "Plus la jauge progresse, plus la structure du texte se rapproche d’un mensonge probable."
 )
 # Barre visuelle de la jauge
 st.markdown(f"""
@@ -13638,7 +14078,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)    
 
-
 # =============================
 # Barre de crédibilité finale
 # =============================
@@ -13670,7 +14109,9 @@ else:
     color_c = "#15803d"
     etiquette_c = "Très solide"
     message_c = "Le texte présente une structure cognitive robuste et peu de signaux de fragilité."
-
+    
+result["final_credibility_label"] = etiquette_c
+result["final_credibility_message"] = message_c
 st.subheader(f"{couleur_c} Crédibilité finale : {etiquette_c}")
 
 st.caption(
@@ -13706,101 +14147,165 @@ st.markdown(
 
 st.caption(message_c)
 
-with st.popover("ℹ️ Formule / explication"):
+with st.popover("ℹ️ Comprendre cette jauge"):
 
-    st.subheader(f"{T['verdict']} : {couleur_c} Crédibilité finale — {etiquette_c}")
-    st.caption(f"Score final : {round(final_score, 1)}/20 — {message_c}")
-    st.subheader(T["summary"])
-
-    m1, m2 = st.columns(2)
-    m1.metric("HFS", round(result["hard_fact_score"], 1))
-    m2.metric("G — gnōsis", round(result["G"], 2))
-    
-    m3, m4 = st.columns(2)
-    m3.metric("N — nous", round(result["N"], 2))
-    m4.metric("D — doxa", round(result["D"], 2))
-    
-    m5, m6 = st.columns(2)
-    m5.metric("Pression discursive", round(result.get("discursive_pressure", 0), 2))
-    m6.metric("ID", round(result.get("ID", 0), 2))
-    
-    m7, m8 = st.columns(2)
-    m7.metric("Pénalité jauges", round(result.get("display_gauge_penalty", 0), 2))
-    m8.metric("Score final", round(final_score, 1))
-    
     st.markdown(f"""
-    Cette jauge synthétise la **crédibilité globale du texte**.
-    
-    Elle combine trois dimensions :
-    
-    - la solidité factuelle du texte  
-    - l’équilibre cognitif entre connaissance, compréhension et certitude  
-    - la pression discursive détectée dans le langage  
-    
-    ---
-    
-    ### 1️⃣ Solidité factuelle
-    
-    `HFS = hard_fact_score / 20`
-    
-    Dans cette analyse :
-    
-    `HFS = {round(result["hard_fact_score"], 1)} / 20`
-    
-    ---
-    
-    ### 2️⃣ Calibration cognitive
-    
-    `OC = (G + N) / (G + N + D)`
-    
-    avec :
-    
-    G = gnōsis  
-    N = nous  
-    D = doxa  
-    
-    Dans cette analyse :
-    
-    `OC = ({round(result["G"],2)} + {round(result["N"],2)}) / ({round(result["G"],2)} + {round(result["N"],2)} + {round(result["D"],2)})`
-    
-    `OC ≈ {round((result["G"] + result["N"]) / max((result["G"] + result["N"] + result["D"]), 1), 2)}`
-    
-    ---
-    
-    ### 3️⃣ Indice de pression discursive
-    
-    `ID = 1 − pression_discursive`
-    
-    avec :
-    
-    `pression_discursive = propagande + pression_rhétorique`
-    
-    Plus la pression discursive est forte, plus le score final diminue.
-    
-    ---
-    
-    ### 4️⃣ Formule heuristique principale
-    
-    `score_initial = 20 × HFS × OC × ID`
-    
-    ---
-    
-    ### 5️⃣ Ajustement final
-    
-    `score_final = score_initial − pénalité_jauges`
-    
-    Score final observé :
-    
-    `score_final = {round(final_score, 1)} / 20`
-    
-    ---
-    
-    ### Interprétation du score final
-    
-    0–5 : crédibilité très fragile  
-    6–9 : crédibilité fragile  
-    10–14 : crédibilité prudente  
-    15–20 : crédibilité robuste
+### Crédibilité finale
+
+Cette jauge synthétise la crédibilité globale du texte.
+
+Elle ne mesure pas :
+
+- la vérité absolue du texte ;
+- l’intention réelle du locuteur ;
+- la seule cohérence du style.
+
+Elle mesure plutôt le niveau de confiance raisonnable que le discours semble permettre après prise en compte des fragilités détectées.
+
+---
+
+### Principe
+
+Le moteur combine :
+
+- la solidité factuelle ;
+- l’équilibre cognitif entre savoir, compréhension et certitude ;
+- la pression discursive ;
+- les pénalités de crédibilité.
+
+Les jauges complémentaires peuvent influencer indirectement le score via les pénalités appliquées.
+
+Influences complémentaires observées :
+
+- **baratinage** ;
+- **omission stratégique** ;
+
+L’effet placebo étendu n’est pris en compte que s’il atteint un niveau significatif.
+
+---
+
+### Formule utilisée
+
+```python
+HFS = hard_fact_score / 20
+
+OC = (
+    G + N
+) / (
+    G + N + D
+)
+
+ID = (
+    1 - pression_discursive
+)
+
+score_initial = (
+    20
+    * HFS
+    * OC
+    * ID
+)
+
+score_final = (
+    score_initial
+    - penalite_jauges
+)
+---
+
+### Avec les valeurs actuelles
+
+HFS :
+
+**{round(result["hard_fact_score"], 1)} / 20**
+
+G :
+
+**{round(result["G"], 2)}**
+
+N :
+
+**{round(result["N"], 2)}**
+
+D :
+
+**{round(result["D"], 2)}**
+
+Pression discursive :
+
+**{round(result.get("discursive_pressure", 0), 2)}**
+
+Pénalité jauges :
+
+**{round(result.get("display_gauge_penalty", 0), 2)}**
+
+---
+
+### Fragilités complémentaires
+
+Baratinage :
+
+**{round(result.get("baratinage_score", 0) * 100, 1)}%**
+
+Omission stratégique :
+
+**{round(result.get("omission_score", 0) * 100, 1)}%**
+
+Effet placebo étendu :
+
+**{round(result.get("extended_placebo_score", 0) * 100, 1)}%**
+
+---
+
+### Résultat actuel
+
+Score final :
+
+**{round(final_score, 1)}/20**
+
+Niveau :
+
+**{etiquette_c}**
+
+{message_c}
+
+---
+
+### Couleurs
+
+🔴 **Rouge — Très fragile**  
+Le texte présente de fortes fragilités structurelles ou vérifiables.
+
+🟠 **Orange — Fragile**  
+Le texte contient plusieurs fragilités importantes.
+
+🟡 **Jaune — Prudente**  
+Le raisonnement existe mais certaines affirmations restent peu démontrées.
+
+🟢 **Vert — Solide**  
+Le texte présente une crédibilité globalement correcte.
+
+🟢 **Vert foncé — Très solide**  
+Le discours présente peu de signaux de fragilité.
+
+---
+
+### Lecture
+
+🔴 **0–5** : crédibilité très fragile
+
+🟠 **6–9** : crédibilité fragile
+
+🟡 **10–14** : crédibilité prudente
+
+🟢 **15–20** : crédibilité robuste
+
+---
+
+### Attention
+
+Un score élevé ne garantit pas que le texte est vrai.
+
+Il indique seulement que le discours conserve une crédibilité relative après prise en compte des fragilités détectées.
     """)
 
     st.markdown("""
@@ -13831,7 +14336,14 @@ life_score = round((result.get("hard_fact_score", 0) / 20) * 100, 1)
 brain = result.get("doxa_brain", {})
 
 st.markdown("### 🧠 Cerveau DOXA")
-
+st.caption(
+    "Le cerveau DOXA décrit principalement le fonctionnement cognitif interne du discours "
+    "(cohérence, développement, stabilité, richesse argumentative). "
+    "Il ne constitue pas une mesure directe de crédibilité finale, de mécroyance ou "
+    "d’intentions cognitives, dont l’évaluation intègre également des contraintes "
+    "supplémentaires et des pénalités liées notamment à l’ancrage au réel, "
+    "à la révisabilité et aux pressions discursives."
+)
 st.markdown(
     f"""
 <div style='
@@ -14504,14 +15016,13 @@ with col_center:
     # Triangle cognitif
     # =============================
     st.subheader("Triangle cognitif G-N-D")
-    st.caption("Le triangle G–N–D positionne un texte selon trois forces :"
-    "savoir (G), compréhension (N) et certitude (D)."
-    
-    "L’équilibre entre ces dimensions révèle si le discours est ouvert, fragile ou cognitivement fermé."
-    
-    "👉 Si un texte sort du triangle, cela indique une structure incohérente ou instable :"
-    "une des dimensions dépasse les autres de manière disproportionnée,"
-    "rendant le discours difficilement interprétable ou épistémiquement non viable.")
+    st.caption(
+        "Le triangle G–N–D positionne un texte selon trois forces : "
+        "savoir articulé (G), compréhension intégrée (N) et certitude stabilisée (D). "
+        "L’équilibre entre ces dimensions permet d’observer si le discours demeure ouvert, "
+        "fragile, surchargé ou cognitivement fermé. "
+        "👉 Si un texte sort du triangle, cela suggère une configuration atypique ou instable."
+    )
     
     fig_triangle = plot_cognitive_triangle_3d(result["G"], result["N"], result["D"])
     st.pyplot(fig_triangle, use_container_width=True)
@@ -15775,6 +16286,18 @@ with sr7:
     st.caption("Déplacement du cadre du débat pour orienter l’interprétation.")
 
     value = result["frame_shift_score"]
+
+    frame_shift_score = result.get("frame_shift_score", 0)
+
+    # Amortisseur : évite de confondre élargissement légitime et glissement stratégique
+    if (
+        result.get("G", 0) >= 8
+        and result.get("N", 0) >= 8
+        and result.get("hard_fact_score", 0) >= 12
+    ):
+        frame_shift_score *= 0.65
+    
+    result["frame_shift_score_adjusted"] = frame_shift_score
 
     if value < 0.15:
         label, color = "Faible", "#ca8a04"
@@ -19026,216 +19549,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.subheader("Structure cognitive du texte analysé")
-st.info(T["llm_intro"])
-
-cog = Cognition(result["G"], result["N"], result["D"])
-overconfidence = result["D"] - (result["G"] + result["N"])
-calibration = result["D"] / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
-revisability = (result["G"] + result["N"] + result["V"]) - result["D"]
-closure = (result["D"] * (1 + len(result["red_flags"]) / 5)) / (result["G"] + result["N"]) if (result["G"] + result["N"]) > 0 else 10
-
-c1, c2 = st.columns(2)
-c1.metric(T["overconfidence"], round(overconfidence, 2))
-c2.metric(T["calibration"], round(calibration, 2))
-c3, c4 = st.columns(2)
-c3.metric(T["revisability"], round(revisability, 2))
-c4.metric(T["cognitive_closure"], round(closure, 2))
-
-st.divider()
-
-st.subheader("Jauge de clôture cognitive")
-
-st.caption(
-    "Cette jauge mesure le degré de verrouillage cognitif du texte. "
-    "Plus elle monte, plus la certitude domine le savoir et l’intégration."
-)
-
-closure_gauge = min(closure / 1.5, 1.0)
-
-closure_label, closure_color, closure_text = interpret_closure_gauge(closure)
-
-render_custom_gauge(closure_gauge, closure_color)
-
-st.markdown(
-    f"<b style='color:{closure_color}'>{closure_label}</b> — {round(closure,2)}",
-    unsafe_allow_html=True
-)
-
-st.caption("Ouverture cognitive ⟵⟶ Clôture cognitive")
-
-st.caption(closure_text)
-st.markdown(f"**{T['interpretation']} :** {cog.interpret()}")
-
-# =============================
-# Ancrage au réel
-# =============================
-
-st.markdown("──── 🧪 ────")
-st.subheader("Ancrage au réel")
-
-st.caption(
-    "Cette jauge mesure dans quelle mesure le discours reste contraint "
-    "par l’expérience, la reproductibilité, la falsifiabilité et "
-    "la reconnaissance explicite de ses limites."
-)
-
-anchor_score = result.get("real_anchor_score", 0)
-anchor_label = result.get("real_anchor_label", "Non calculé")
-anchor_text = result.get("real_anchor_interpretation", "")
-
-if anchor_score < 3:
-    anchor_color = "#7f1d1d"   # rouge sombre
-    anchor_label = "Très faible"
-
-elif anchor_score < 7:
-    anchor_color = "#b45309"   # cuivre
-    anchor_label = "Fragile"
-
-elif anchor_score < 12:
-    anchor_color = "#a16207"   # ambre
-    anchor_label = "Modéré"
-
-elif anchor_score < 16:
-    anchor_color = "#57534e"   # pierre / neutre
-    anchor_label = "Fort"
-
-else:
-    anchor_color = "#334155"   # bleu acier
-    anchor_label = "Très fort"
-
-render_custom_gauge(anchor_score / 20, anchor_color)
-
-st.markdown(
-    f"<b style='color:{anchor_color}'>{anchor_label}</b> — {anchor_score}/20",
-    unsafe_allow_html=True
-)
-
-st.caption(anchor_text)
-
-st.caption("Spéculation libre ⟵⟶ Contrainte du réel")
-
-st.caption(
-    "Contrairement aux jauges morales classiques, cette palette ne récompense "
-    "pas une supposée vérité. Elle visualise la tension entre spéculation libre "
-    "et contrainte du réel. Les couleurs froides et minérales indiquent "
-    "une structure davantage stabilisée par l’expérience et la reproductibilité."
-)
-
-# =============================
-# Composantes
-# =============================
-
-st.markdown("### Composantes de l’ancrage")
-
-c1, c2 = st.columns(2)
-c3, c4 = st.columns(2)
-c5, _ = st.columns(2)
-
-c1.metric("Empirie", result.get("real_anchor_E", 0))
-c2.metric("Reproductibilité", result.get("real_anchor_R", 0))
-c3.metric("Falsifiabilité", result.get("real_anchor_F", 0))
-c4.metric("Limites", result.get("real_anchor_L", 0))
-c5.metric("Spéculation", result.get("real_anchor_S", 0))
-
-# =============================
-# Delta réalité / mécroyance
-# =============================
-
-st.markdown("### Tension réalité / cohérence")
-
-delta = result.get("delta_reality", 0)
-delta_label = result.get("delta_reality_label", "Non calculé")
-delta_text = result.get("delta_reality_interpretation", "")
-
-if delta <= -5:
-    delta_color = "#16a34a"
-
-elif delta <= 2:
-    delta_color = "#ca8a04"
-
-else:
-    delta_color = "#dc2626"
-
-st.markdown(
-    f"<b style='color:{delta_color}'>{delta_label}</b> — Δ = {delta}",
-    unsafe_allow_html=True
-)
-
-st.caption(delta_text)
-
-# =============================
-# Marqueurs détectés
-# =============================
-
-with st.expander("Voir les marqueurs d’ancrage", expanded=False):
-
-    st.write(
-        "**Empirie :**",
-        result.get("real_anchor_empirical_markers", [])
-    )
-
-    st.write(
-        "**Reproductibilité :**",
-        result.get("real_anchor_reproducibility_markers", [])
-    )
-
-    st.write(
-        "**Falsifiabilité :**",
-        result.get("real_anchor_falsifiability_markers", [])
-    )
-
-    st.write(
-        "**Limites explicites :**",
-        result.get("real_anchor_limits_markers", [])
-    )
-
-    st.write(
-        "**Spéculation extrapolative :**",
-        result.get("real_anchor_speculation_markers", [])
-    )
-
-st.markdown("""
-<div style="text-align:center; margin:25px 0; color:#888;">
-──── 🧠 ────
-</div>
-""", unsafe_allow_html=True)
-
-st.subheader(T["hard_fact_checking_by_claim"])
-claims_df = pd.DataFrame(
-    [
-        {
-            T["claim"]: c.text,
-            "Type": ", ".join(c.claim_types),
-            "Forme": c.aristotelian_type if c.aristotelian_type else "-",
-            "Sujet": c.subject_term if c.subject_term else "-",
-            "Prédicat": c.predicate_term if c.predicate_term else "-",
-            T["status"]: c.status,
-            f"{T['verifiability']} /20": c.verifiability,
-            f"{T['risk']} /20": c.risk,
-            "Ajustement": c.short_adjustment,
-            "Note épistémique": c.epistemic_note,
-            T["number"]: T["yes"] if c.has_number else T["no"],
-            T["date"]: T["yes"] if c.has_date else T["no"],
-            T["named_entity"]: T["yes"] if c.has_named_entity else T["no"],
-            T["attributed_source"]: T["yes"] if c.has_source_cue else T["no"],
-        }
-        for c in result["claims"]
-    ]
-)
-
-if not claims_df.empty:
-    st.dataframe(claims_df, use_container_width=True, hide_index=True)
-else:
-    st.info(T["paste_longer_text"])
-    
-st.markdown("""
-<div style="text-align:center; margin:25px 0; color:#888;">
-──── 🧠 ────
-</div>
-""", unsafe_allow_html=True)
-
-st.divider()
+# -----------------------------
+# Analyse syllogistique
+# -----------------------------
 st.subheader("Analyse syllogistique")
 
 if result.get("syllogisms"):
@@ -19264,7 +19580,9 @@ else:
     st.info("Aucun syllogisme détecté.")
 
 st.divider()
-
+# -----------------------------
+# Enthymèmes
+# -----------------------------
 st.subheader("Enthymèmes détectés")
 
 if result.get("enthymemes"):
@@ -19287,6 +19605,9 @@ else:
 
 st.divider()
 
+# -----------------------------
+# Sophismes syllogistiques
+# -----------------------------
 st.subheader("Sophismes syllogistiques")
 
 if result.get("fallacies"):
@@ -19308,6 +19629,46 @@ if result.get("fallacies"):
 else:
     st.info("Aucun sophisme syllogistique détecté.")
 
+st.divider()
+
+st.markdown("""
+<div style="text-align:center; margin:25px 0; color:#888;">
+──── 🧠 ────
+</div>
+""", unsafe_allow_html=True)
+            
+# -----------------------------
+# hard_fact_checking_by_claim
+# -----------------------------
+st.subheader(T["hard_fact_checking_by_claim"])
+claims_df = pd.DataFrame(
+    [
+        {
+            T["claim"]: c.text,
+            "Type": ", ".join(c.claim_types),
+            "Forme": c.aristotelian_type if c.aristotelian_type else "-",
+            "Sujet": c.subject_term if c.subject_term else "-",
+            "Prédicat": c.predicate_term if c.predicate_term else "-",
+            T["status"]: c.status,
+            f"{T['verifiability']} /20": c.verifiability,
+            f"{T['risk']} /20": c.risk,
+            "Ajustement": c.short_adjustment,
+            "Note épistémique": c.epistemic_note,
+            T["number"]: T["yes"] if c.has_number else T["no"],
+            T["date"]: T["yes"] if c.has_date else T["no"],
+            T["named_entity"]: T["yes"] if c.has_named_entity else T["no"],
+            T["attributed_source"]: T["yes"] if c.has_source_cue else T["no"],
+        }
+        for c in result["claims"]
+    ]
+)
+
+if not claims_df.empty:
+    st.dataframe(claims_df, use_container_width=True, hide_index=True)
+else:
+    st.info(T["paste_longer_text"])
+    
+
 st.divider()  
 st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
@@ -19315,7 +19676,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.subheader(T["ai_module"])
+# -----------------------------
+# Synthèse critique IA
+# -----------------------------
+st.subheader("🧠 Synthèse critique IA")
 st.caption(T["ai_module_caption"])
 
 if client is None:
@@ -19363,30 +19727,107 @@ st.markdown("""
 # -----------------------------
 # Méthode
 # -----------------------------
-if show_method:
+st.markdown("""
+### Méthode
 
-    st.subheader(T["method"])
+#### Formule originelle
 
-    method_text = f"""
-### {T['original_formula']}
+```text
+M = (G + N) - D
+```
 
-`M = (G + N) - D`
+G : densité de savoir articulé — sources, chiffres, noms, références, traces vérifiables.
 
-- {T['articulated_knowledge_density']}
-- {T['integration']}
-- {T['assertive_rigidity']}
+N : intégration — contexte, nuances, réserves, cohérence argumentative.
 
-### {T['llm_metrics']}
+D : rigidité assertive — certitudes non soutenues, emballement rhétorique.
 
-- **{T['overconfidence']}** : `D - (G + N)`
-- **{T['calibration']}** : `D / (G + N)`
-- **{T['revisability']}** : `(G + N + V) - D`
-- **{T['cognitive_closure']}** : `(D * S) / (G + N)`
+---
 
-{T['disclaimer']}
-"""
+#### Métriques dérivées
 
-    st.markdown(method_text)
+```text
+Surconfiance = D - (G + N)
+
+Calibration relative = D / (G + N)
+
+Révisabilité = (G + N + V) - D
+
+Fermeture cognitive =
+max(0, D - (G_drift + N))
+
+Pseudo-savoir =
+max(0, (G_drift + D) - N)
+
+Intuition dogmatique =
+max(0, (N + D) - G_drift)
+
+Dérive cognitive globale =
+dominant_value * 0.60
++
+average_value * 0.40
+```
+
+Avec :
+
+```text
+G_drift = G × 0.5
+```
+
+---
+
+#### Nouvelles jauges structurelles
+
+```text
+Baratinage =
+(
+CF + CE + ACE + RP + NP + PI + CS
+)
+-
+(
+HF + AR + RV + BC + AS + AN
+)
+
+Omission stratégique =
+(
+CP
++ DR×1.5
++ PI
++ AA
++ CF
++ CC
++ MS×0.35
+)
+-
+(
+LM
++ RV
++ AR
++ PX
++ CA
+)
+
+Effet placebo étendu =
+(
+((N + 2D) - G)
+× EX
+)
++
+heuristique pondérée
+```
+
+---
+
+#### Lecture
+
+Cette app ne remplace ni un journaliste,
+ni un chercheur,
+ni un greffier du réel.
+
+Mais elle retire déjà quelques masques au texte qui parade.
+""")
+
+
 st.divider()    
 st.markdown("""
 <div style="text-align:center; margin:25px 0; color:#888;">
@@ -19553,3 +19994,26 @@ with st.expander("Afficher les feedbacks"):
             st.info("Aucun feedback enregistré.")
     elif admin_code:
         st.error("Code incorrect.")
+
+st.divider()
+
+# =============================
+# Nouscope
+# =============================
+st.caption("""
+**Le NOUSCOPE**
+
+Cette architecture d’IRM du langage constitue la base expérimentale du développement du Nouscope.
+
+Définition :
+
+Le Nouscope est un instrument d’exploration cognitive destiné à cartographier les dynamiques du savoir (G), de l’intégration (N), de la certitude (D) et de leurs dérives.
+
+Son objectif n’est pas de décider du vrai ou du faux, mais d’observer comment un discours se structure, se stabilise, se ferme ou reste révisable.
+
+À terme, le Nouscope ambitionne de fonctionner comme une forme d’imagerie du raisonnement :
+non une IRM du cerveau biologique,
+mais une IRM du langage, des architectures argumentatives et des équilibres cognitifs.
+
+DOXA Detector constitue la première couche d’observation de cette architecture.
+""")
