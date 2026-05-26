@@ -627,26 +627,47 @@ client = get_openai_client()
 # Header
 # -----------------------------
 st.markdown("""
-<h1 style="text-align:center; font-size:36px;">
-De la logique d’Aristote aux équations du discours
-</h1>
+<div style="
+color:#111827;
+font-size:16px;
+line-height:1.45;
+text-align:justify;
+">
+
+<p><b>DOXA Detector analyse la structure cognitive des discours grâce à un moteur analytique fondé sur des équations, des heuristiques discursives, des fonctions de calcul et une analyse analogique des formes argumentatives.</b></p>
+
+<p><b>Le moteur repose principalement sur une approche hybride articulée autour de quatre axes complémentaires : l’heuristique, l’analogie, la grammaire discursive et la rhétorique.</b></p>
+
+<p><b>Basé essentiellement sur du calcul explicite, le cœur du modèle s’organise notamment autour de l’équation cognitive :</b></p>
+
+<div style="
+text-align:center;
+font-size:22px;
+font-weight:bold;
+color:#000000;
+margin:6px 0;
+">
+M = (G + N) − D
+</div>
+
+<p><b>où le savoir (G), la compréhension intégrée (N) et le degré de certitude (D) permettent d’estimer certaines dynamiques cognitives susceptibles d’apparaître dans un discours.</b></p>
+
+<p><b>Dans la tradition logique inaugurée par Aristote — qui distinguait prémisses, raisonnements et sophismes — l’application observe les structures argumentatives présentes dans un texte afin d’en extraire les mécanismes de construction, de stabilisation et parfois de fermeture cognitive.</b></p>
+
+<p><b>L’approche heuristique consiste à repérer des indices, des marqueurs récurrents et des configurations susceptibles de révéler certaines propriétés du discours.</b></p>
+
+<p><b>L’approche analogique observe la forme globale du raisonnement. Le texte n’est pas évalué uniquement pour ce qu’il affirme mais pour la manière dont il s’organise et pour les architectures cognitives auxquelles il ressemble.</b></p>
+
+<p><b>La grammaire discursive étudie l’organisation du langage au niveau du discours lui-même : articulation des idées, transitions, certitudes, nuances, hiérarchisation des propositions et dynamique argumentative. Elle ne vise ni la correction orthographique ni l’évaluation grammaticale scolaire.</b></p>
+
+<p><b>L’analyse rhétorique observe les procédés d’influence employés consciemment ou non : technicité, narrativité, cadrage, amplification, persuasion, saturation ou mise en scène discursive.</b></p>
+
+<p><b>DOXA Detector identifie ainsi différentes formes de sophismes, de biais argumentatifs et de mécanismes persuasifs sans nécessiter la compréhension du sens des mots.</b></p>
+
+<p><b>L’intelligence artificielle n’intervient que comme module optionnel d’assistance des calculs. L’évaluation principale demeure fondée sur des mécanismes calculables plutôt que sur une compréhension sémantique opaque.</b></p>
+
+</div>
 """, unsafe_allow_html=True)
-
-st.markdown(
-    """
-**DOXA Detector analyse la structure cognitive des discours grâce à un moteur analytique fondé sur des équations, des heuristiques linguistiques et des fonctions de calcul.**
-
-**Basé entièrement sur du calcul, le cœur du modèle repose sur l’équation cognitive : M = (G + N) − D.**
-
-**Dans la tradition logique inaugurée par Aristote — qui distinguait prémisses, raisonnements et sophismes — l’application examine les structures argumentatives présentes dans un texte.**
-
-**L’application identifie les différentes formes de sophismes et autres procédés de persuasion présents dans un texte sans avoir besoin de connaître la définition des mots ; celle-ci n’étant utilisée qu’à titre optionnel via une analyse sémantique complémentaire.**
-
-**Ces structures constituent souvent l’empreinte des biais du langage et permettent d’en révéler les mécanismes, aussi bien dans l’analyse des publications médiatiques que pour s’exercer à ne pas les reproduire.**
-
-**L’intelligence artificielle n’intervient que comme module optionnel d’assistance et d’interprétation.**
-"""
-)
 
 st.markdown(
     "<div style='border-top:1px solid #e6e6e6;margin:22px 0'></div>",
@@ -3491,14 +3512,6 @@ ATTACK_TERMS += [
     "prennent un malin plaisir",
     "agitent le chiffon rouge",
     "chiffon rouge",
-]
-FRAME_SHIFT_TERMS += [
-    "ce n'est pas pour autant",
-    "ce n’est pas pour autant",
-    "en réalité",
-    "et ce n'est pas tout",
-    "et ce n’est pas tout",
-    "le problème ?",
 ]
 
 BINARY_OPPOSITION_TERMS += [
@@ -8787,7 +8800,110 @@ def compute_cognitive_bonus(result: dict):
         "bonus_interpretation":
             "Compensation par ancrage réel, révisabilité et cohérence."
     }
+# =============================
+# Robustesse quantitative
+# =============================
+def compute_quantitative_robustness(text: str) -> dict:
+    if not text or not text.strip():
+        return {
+            "score": 0.0,
+            "label": "Faible",
+            "color": "#22c55e",
+            "markers": [],
+            "interpretation": "Aucune structure quantitative notable détectée."
+        }
 
+    t = normalize_text_for_markers(text)
+
+    markers = []
+
+    positive_terms = [
+        "cycle de vie",
+        "par kilowattheure",
+        "kilowattheure",
+        "pour comparaison",
+        "en moyenne",
+        "par rapport",
+        "comparaison",
+        "émissions",
+        "co₂",
+        "carbone",
+        "grammes",
+        "secteur",
+        "surface occupée",
+        "hectare",
+        "production stable",
+        "neutralité carbone",
+        "données",
+        "chiffres",
+        "étude",
+        "rapport",
+        "selon",
+    ]
+
+    for term in positive_terms:
+        if contains_term(t, term):
+            markers.append(term)
+
+    numbers = re.findall(r"\b\d+(?:[.,]\d+)?\s*(?:%|grammes?|g|kg|tonnes?|m3|m³|kwh|kilowattheure|hectares?)?\b", text.lower())
+
+    if len(numbers) >= 3:
+        markers.append("plusieurs données chiffrées")
+
+    if any(x in t for x in ["charbon", "gaz", "solaire", "éolien", "nucléaire"]):
+        if any(x in t for x in ["pour comparaison", "comparaison", "par rapport", "contrairement"]):
+            markers.append("comparaison inter-énergies")
+
+    weak_terms = [
+        "choc",
+        "massif",
+        "majeur",
+        "énorme",
+        "catastrophe",
+        "absolument certain",
+        "sans précédent",
+    ]
+
+    weak_hits = [
+        term for term in weak_terms
+        if contains_term(t, term)
+    ]
+
+    raw = (
+        min(len(markers) * 0.07, 0.85)
+        - min(len(weak_hits) * 0.05, 0.25)
+    )
+
+    score = max(0.0, min(raw, 1.0))
+    
+    if score < 0.25:
+        label = "Faible"
+        color = "#eab308"
+        interpretation = "Le texte mobilise peu de structure quantitative robuste."
+
+    elif score < 0.50:
+        label = "Modérée"
+        color = "#eab308"
+        interpretation = "Le texte contient quelques appuis quantitatifs, mais leur rôle démonstratif reste limité."
+
+    elif score < 0.75:
+        label = "Solide"
+        color = "#22c55e"
+        interpretation = "Le texte articule plusieurs données, comparaisons ou ordres de grandeur de manière structurante."
+
+    else:
+        label = "Très solide"
+        color = "#16a34a"
+        interpretation = "Le raisonnement repose fortement sur une architecture quantitative explicite et relativement robuste."
+    
+    return {
+        "score": round(score, 3),
+        "label": label,
+        "color": color,
+        "markers": unique_keep_order(markers),
+        "weak_markers": unique_keep_order(weak_hits),
+        "interpretation": interpretation
+    }
 
 def analyze_article(text: str) -> Dict:
     article = text
@@ -8874,6 +8990,7 @@ def analyze_article(text: str) -> Dict:
     argument_density_analysis = compute_argument_density(text)
     complex_enthymeme_analysis = compute_complex_enthymemes(text)
     self_validating_analysis = compute_self_validating_narrative(text)
+    quantitative_robustness_analysis = compute_quantitative_robustness(text)
 
     certainty = len(re.findall(r"certain|absolument|prouvé|évident|incontestable", text.lower()))
     emotional = len(re.findall(r"|".join(re.escape(w) for w in EMOTIONAL_WORDS), text.lower()))
@@ -9052,18 +9169,45 @@ def analyze_article(text: str) -> Dict:
     )
 
     hard_fact_score_raw = (
-        (0.18 * G + 0.12 * N + 0.20 * V + 0.22 * source_quality + 0.18 * avg_claim_verifiability)
-        - (0.16 * D + 0.12 * R + 0.18 * avg_claim_risk + total_credibility_penalty)
+        (
+            0.22 * G
+            + 0.14 * N
+            + 0.18 * V
+            + 0.18 * source_quality
+            + 0.14 * avg_claim_verifiability
+            + 0.04 * ((G + N + V) / 3)
+        )
+        - (
+            0.16 * D
+            + 0.12 * R
+            + 0.18 * avg_claim_risk
+            + total_credibility_penalty
+        )
     )
     hard_fact_score = round(clamp(hard_fact_score_raw + 8, 0, 20), 1)
     short_epistemic_bonus = 0.0
     if claims:
         short_epistemic_bonus = sum(c.short_adjustment for c in claims) / len(claims)
-        short_epistemic_bonus = min(short_epistemic_bonus, 1.5)
+        short_epistemic_bonus = min(short_epistemic_bonus, 0.8)
 
     hard_fact_score = round(clamp(hard_fact_score + short_epistemic_bonus, 0, 20), 1)
 
+    # Bonus de robustesse quantitative
+    quantitative_robustness_bonus = 0.0
+    
+    if quantitative_robustness_analysis["score"] >= 0.50:
+        quantitative_robustness_bonus = 0.4
+    
+    if quantitative_robustness_analysis["score"] >= 0.75:
+        quantitative_robustness_bonus = 0.7
+    
+    hard_fact_score = round(
+        clamp(hard_fact_score + quantitative_robustness_bonus, 0, 20),
+        1
+    )
+
     political_pattern_score, political_results, matched_terms = detect_political_patterns(text)
+    
     rhetorical_pressure = compute_rhetorical_pressure(political_results)
 
     # -----------------------------
@@ -9083,21 +9227,20 @@ def analyze_article(text: str) -> Dict:
     # Score final fusion des jauges
     # -----------------------------
     HFS = hard_fact_score / 20
-
+    
     OC = max(0.0, (G + N) / (G + N + D)) if (G + N + D) > 0 else 0.0
-
+    
     discursive_pressure = min(
         1.0,
         propaganda_analysis["score"] + rhetorical_pressure
     )
-
+    
     ID = max(0.1, 1 - discursive_pressure)
-
+    
     final_credibility_score = round(
         20 * HFS * OC * ID,
         1
     )
-
     if final_credibility_score < 6:
         verdict = T["low_credibility"]
     elif final_credibility_score < 10:
@@ -9433,6 +9576,13 @@ def analyze_article(text: str) -> Dict:
 
         "false_dilemma_nuance_count": aristotelian_fallacies["false_dilemma"].get("nuance_count", 0),
         "false_dilemma_nuance_markers": aristotelian_fallacies["false_dilemma"].get("nuance_markers", []),
+
+        "quantitative_robustness_score": quantitative_robustness_analysis["score"],
+        "quantitative_robustness_label": quantitative_robustness_analysis["label"],
+        "quantitative_robustness_color": quantitative_robustness_analysis["color"],
+        "quantitative_robustness_markers": quantitative_robustness_analysis["markers"],
+        "quantitative_robustness_weak_markers": quantitative_robustness_analysis["weak_markers"],
+        "quantitative_robustness_interpretation": quantitative_robustness_analysis["interpretation"],
 
         "reported_speech_score": reported_speech["score"],
         "reported_speech_ratio": reported_speech["ratio"],
@@ -10571,10 +10721,10 @@ def detect_discourse_type_from_rhetoric(text: str, rhetorical_scores: dict):
     scores["scientifique"] += rhetorical_scores.get("technicite", 0) * 1.1
     scores["scientifique"] += rhetorical_scores.get("dissimulation_attenuation", 0) * 0.3
 
-    scores["journalistique"] += rhetorical_scores.get("technicite", 0) * 0.9
-    scores["journalistique"] += rhetorical_scores.get("narrativité", 0) * 0.5
-    scores["journalistique"] += rhetorical_scores.get("coherence_performative", 0) * 0.3
-    scores["journalistique"] += rhetorical_scores.get("saturation_rhetorique", 0) * 0.4
+    scores["journalistique"] += rhetorical_scores.get("technicite", 0) * 0.45
+    scores["journalistique"] += rhetorical_scores.get("narrativité", 0) * 0.35
+    scores["journalistique"] += rhetorical_scores.get("coherence_performative", 0) * 0.15
+    scores["journalistique"] += rhetorical_scores.get("saturation_rhetorique", 0) * 0.20
 
     scores["technocratique"] += rhetorical_scores.get("dissimulation_attenuation", 0) * 1.8
     scores["technocratique"] += rhetorical_scores.get("technicite", 0) * 0.5
@@ -10627,8 +10777,10 @@ def detect_discourse_type_from_rhetoric(text: str, rhetorical_scores: dict):
     # Écologique
     # =====================================================
     
-    scores["ecologique"] += rhetorical_scores.get("ecologique", 0) * 1.3
-    scores["ecologique"] += rhetorical_scores.get("amplification", 0) * 0.15
+    scores["ecologique"] += rhetorical_scores.get("ecologique", 0) * 2.0
+    scores["ecologique"] += rhetorical_scores.get("technicite", 0) * 0.25
+    scores["ecologique"] += rhetorical_scores.get("scientificite_rhetorique", 0) * 0.20
+    scores["ecologique"] += rhetorical_scores.get("amplification", 0) * 0.10
     
     # =====================================================
     # Social
@@ -18743,7 +18895,7 @@ st.markdown("""
 # -----------------------------
 st.subheader("📊 Analyse statistique et quantitative")
 
-sq1, sq2, sq3 = st.columns(3)
+sq1, sq2, sq3, sq4 = st.columns(4)
 
 with sq1:
     st.markdown("### Manipulation statistique")
@@ -18982,6 +19134,151 @@ with sq3:
             "Une donnée sans référentiel ne signifie pas nécessairement qu’elle est fausse. "
             "Elle indique que son cadre méthodologique reste insuffisamment explicité."
         )
+
+# =============================
+# Robustesse quantitative
+# =============================
+with sq4:
+    st.subheader("Analyse analogique de la robustesse quantitative")
+    
+    st.caption(
+        "Cette jauge estime si les chiffres, comparaisons et ordres de grandeur "
+        "structurent réellement le raisonnement, ou servent surtout d’habillage rhétorique."
+    )
+    
+    value = result.get("quantitative_robustness_score", 0)
+    
+    render_custom_gauge(
+        value,
+        result.get("quantitative_robustness_color", "#22c55e")
+    )
+    
+    st.markdown(
+        f"""
+    <b style='color:{result.get("quantitative_robustness_color", "#22c55e")}'>
+    {result.get("quantitative_robustness_label", "Faible")}
+    </b>
+    — {round(value*100,1)}%
+    """,
+        unsafe_allow_html=True
+    )
+    
+    st.caption(
+        result.get(
+            "quantitative_robustness_interpretation",
+            "Robustesse quantitative non calculée."
+        )
+    )
+    
+    st.caption(
+        "Chiffres décoratifs ⟵⟶ Architecture quantitative"
+    )
+    
+    
+    # -----------------------------
+    # Popover marqueurs
+    # -----------------------------
+    with st.popover("🔎 Voir les marqueurs"):
+    
+        markers = result.get(
+            "quantitative_robustness_markers",
+            []
+        )
+    
+        weak = result.get(
+            "quantitative_robustness_weak_markers",
+            []
+        )
+    
+        if markers:
+            st.write("Marqueurs détectés :")
+            st.write(markers)
+    
+        if weak:
+            st.write("")
+            st.write("Marqueurs d’affaiblissement :")
+            st.write(weak)
+    
+    
+    # -----------------------------
+    # Popover explication
+    # -----------------------------
+    with st.popover("ℹ️ Comprendre cette jauge"):
+
+        st.markdown("""
+
+### Analyse analogique de la robustesse quantitative
+
+Cette jauge mesure si les données numériques, comparaisons et ordres de grandeur participent réellement au raisonnement.
+
+Principe
+
+Le moteur recherche :
+
+- comparaisons quantitatives ;
+- ordres de grandeur ;
+- unités ;
+- structures comparatives ;
+- usage démonstratif des chiffres.
+
+La jauge réduit son score lorsque :
+
+- les chiffres semblent décoratifs ;
+- le texte privilégie l’emphase ;
+- les comparaisons restent peu structurées.
+
+Formule utilisée
+
+```text
+positive =
+marqueurs quantitatifs
++
+comparaisons
++
+unités
++
+densité numérique
+
+negative =
+marqueurs émotionnels
++
+amplification
+
+score =
+clamp(
+positive - negative,
+0,
+1
+)
+""")
+
+        st.metric(
+            "Robustesse quantitative",
+            f"{round(value * 100, 1)}%"
+        )
+        
+        st.markdown("""
+
+Lecture
+
+🟡 Faible :
+les chiffres jouent peu de rôle dans le raisonnement
+
+🟡 Modérée :
+présence d’éléments quantitatifs utiles
+
+🟢 Solide :
+comparaisons et quantification structurantes
+
+🟢 Très solide :
+architecture quantitative fortement intégrée
+
+Attention
+
+Une robustesse quantitative élevée ne signifie pas que les conclusions sont vraies.
+
+Elle indique seulement que les chiffres semblent participer au raisonnement plutôt qu’au décor rhétorique.
+""")
 
 st.divider()
 
